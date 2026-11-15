@@ -1,0 +1,56 @@
+[
+  {
+    "project": "restic",
+    "version": "v0.19.1",
+    "asset": "restic_0.19.1_linux_amd64.bz2",
+    "url": "https://github.com/restic/restic/releases/download/v0.19.1/restic_0.19.1_linux_amd64.bz2",
+    "sha256": "f415415624dcc452f2a02b8c33641791a8c6d6d3b65bbb3543fcf9a25151585c",
+    "verified_against": "official GitHub release asset digest"
+  },
+  {
+    "project": "rclone",
+    "version": "v1.75.2",
+    "asset": "rclone-v1.75.2-linux-amd64.zip",
+    "url": "https://github.com/rclone/rclone/releases/download/v1.75.2/rclone-v1.75.2-linux-amd64.zip",
+    "sha256": "349ac8fba6ff65d6247043f1750cdcb518ec5d500ef91463a10d37c0ccdf3702",
+    "verified_against": "official GitHub release asset digest"
+  },
+  {
+    "project": "homepage",
+    "version": "v2.7.0",
+    "commit": "2e5f10134ae3961bb936d3e7c441f9a1f4a4bf4f",
+    "repo": "https://github.com/gethomepage/homepage.git",
+    "node": "v24.22.1",
+    "pnpm": "10.34.6",
+    "lockfile": "vendor/homepage/pnpm-lock.yaml"
+  },
+  {
+    "project": "filebrowser",
+    "version": "v2.63.23",
+    "asset": "linux-amd64-filebrowser.tar.gz",
+    "url": "https://github.com/filebrowser/filebrowser/releases/download/v2.63.23/linux-amd64-filebrowser.tar.gz",
+    "sha256": "b14db2bb8033caa3f80205eb6578b2ed0744ebd9e716b790bc4a9703ce909e88",
+    "verified_against": "official GitHub release asset digest"
+  },
+  {
+    "project": "code-server",
+    "version": "v4.144.0",
+    "asset": "code-server-4.144.0-linux-amd64.tar.gz",
+    "url": "https://github.com/coder/code-server/releases/download/v4.144.0/code-server-4.144.0-linux-amd64.tar.gz",
+    "sha256": "710f749c40a0f3d0ab3be09c0de65314e5c2907cc50646f5fbc0f24c0e8fba2d"
+  },
+  {
+    "project": "magpie",
+    "version": "v0.1.4268",
+    "asset": "magpie-cli-linux-amd64",
+    "url": "https://github.com/yetone/magpie-releases/releases/download/v0.1.4268/magpie-cli-linux-amd64",
+    "sha256": "27b3a60bf9fea365925e7709158d52bf24fcd8ab186f26ad288939ef2d689f19"
+  },
+  {
+    "project": "ttyd",
+    "version": "1.7.7",
+    "asset": "ttyd.x86_64",
+    "url": "https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64",
+    "sha256": "8a217c968aba172e0dbf3f34447218dc015bc4d5e59bf51db2f2cd12b7be4f55"
+  }
+]

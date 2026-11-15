@@ -1,0 +1,17 @@
+.venv
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+private/
+state/
+logs/
+*.db
+*.db-*
+*.sqlite*
+*.zip
+*.tar.gz
+node_modules/
+.next/
+var/

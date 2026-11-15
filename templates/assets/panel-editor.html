@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>编辑首页 · HaloDeck</title><link rel="stylesheet" href="/lab-assets/panel-editor.css"><script src="/lab-assets/panel-editor.js" defer></script></head>
+<body>
+<main>
+  <header><a href="/" class="back">← 返回首页</a><div class="heading"><div><h1>编辑首页</h1><p>让常用的东西，待在顺手的位置。</p></div><button id="save" class="primary" disabled>保存到首页</button></div></header>
+  <div id="notice" role="status" aria-live="polite">正在读取首页…</div>
+  <form id="editor" hidden>
+    <section class="appearance"><h2>首页外观</h2><div class="fields"><label>首页名称<input id="title" maxlength="60" required></label><label>背景<select id="background"></select></label><label>背景强度 <output id="opacity-label"></output><input id="opacity" type="range" min="10" max="80"></label></div><div class="toggles"><label><input type="checkbox" id="show_metrics"> 显示实时资源</label><input type="checkbox" id="show_recent" hidden disabled></div></section>
+    <div class="section-head"><h2>入口与分组</h2><button type="button" id="add-group">＋ 添加分组</button></div>
+    <p class="hint">展开入口即可修改。上下移动调整顺序，移除只影响首页。</p>
+    <div id="groups"></div>
+    <section class="library"><h2>找回常用入口</h2><p class="hint">已移除的内置工具可以随时加回来。</p><div id="library"></div></section>
+    <details class="advanced"><summary>导入、导出与撤销</summary><div class="tools"><button type="button" id="export">导出当前配置</button><button type="button" id="import">导入配置</button><input type="file" id="import-file" accept="application/json,.json" hidden><button type="button" id="undo">撤销上次保存</button><button type="button" id="reload">重新载入</button></div><p class="hint">导入后先检查，再保存。每次保存都会留一份副本。</p></details>
+  </form>
+  <footer><span id="dirty">修改会保存到服务器，所有设备同步。</span><a href="/" id="view">查看首页 ↗</a></footer>
+</main>
+<dialog id="confirm"><form method="dialog"><h2 id="confirm-title"></h2><p id="confirm-description"></p><div class="dialog-actions"><button value="cancel">取消</button><button value="ok" class="primary">确定</button></div></form></dialog>
+</body></html>

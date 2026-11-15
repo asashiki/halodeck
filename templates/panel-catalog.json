@@ -1,0 +1,136 @@
+{
+  "services": [
+    {
+      "终端": {
+        "id": "app-terminal",
+        "href": "/term/",
+        "description": "继续持久会话 · 支持传图",
+        "icon": "/lab-assets/brand-terminal.svg",
+        "siteMonitor": "http://127.0.0.1:8100/lab-api/health/terminal"
+      }
+    },
+    {
+      "Magpie": {
+        "id": "app-magpie",
+        "href": "/magpie/",
+        "description": "模型、账号与配额中枢",
+        "icon": "/lab-assets/brand-magpie.svg",
+        "siteMonitor": "http://127.0.0.1:8100/lab-api/health/magpie"
+      }
+    },
+    {
+      "云盘": {
+        "id": "app-files",
+        "href": "/workbench/files/",
+        "description": "拖放上传 · 浏览与预览",
+        "icon": "/lab-assets/brand-files-ipados.svg",
+        "siteMonitor": "http://127.0.0.1:8100/lab-api/health/files"
+      }
+    },
+    {
+      "VS Code": {
+        "id": "app-code",
+        "href": "/workbench/code/?folder=/workspace",
+        "description": "打开项目，继续创作",
+        "icon": "/lab-assets/brand-code-server.svg",
+        "siteMonitor": "http://127.0.0.1:8100/lab-api/health/code"
+      }
+    },
+    {
+      "备份与恢复": {
+        "id": "app-backup",
+        "href": "/lab-assets/recovery.html",
+        "description": "异地增量 · 数据恢复",
+        "icon": "/lab-assets/brand-backup-ipados.svg"
+      }
+    }
+  ],
+  "choices": [
+    {
+      "name": "终端",
+      "id": "app-terminal",
+      "href": "/term/",
+      "description": "继续持久会话 · 支持传图",
+      "icon": "/lab-assets/brand-terminal.svg"
+    },
+    {
+      "name": "Magpie",
+      "id": "app-magpie",
+      "href": "/magpie/",
+      "description": "模型、账号与配额中枢",
+      "icon": "/lab-assets/brand-magpie.svg"
+    },
+    {
+      "name": "云盘",
+      "id": "app-files",
+      "href": "/workbench/files/",
+      "description": "拖放上传 · 浏览与预览",
+      "icon": "/lab-assets/brand-files-ipados.svg"
+    },
+    {
+      "name": "VS Code",
+      "id": "app-code",
+      "href": "/workbench/code/?folder=/workspace",
+      "description": "打开项目，继续创作",
+      "icon": "/lab-assets/brand-code-server.svg"
+    },
+    {
+      "name": "备份与恢复",
+      "id": "app-backup",
+      "href": "/lab-assets/recovery.html",
+      "description": "异地增量 · 数据恢复",
+      "icon": "/lab-assets/brand-backup-ipados.svg"
+    }
+  ],
+  "metrics": {
+    "本机概览": [
+      {
+        "CPU": {
+          "id": "metric-cpu",
+          "icon": "/lab-assets/metric-cpu.svg",
+          "href": "/#metric-cpu",
+          "description": "Linux 可见处理器"
+        }
+      },
+      {
+        "内存": {
+          "id": "metric-memory",
+          "icon": "/lab-assets/metric-memory.svg",
+          "href": "/#metric-memory",
+          "description": "实时占用与可用容量"
+        }
+      },
+      {
+        "工作区磁盘": {
+          "id": "metric-disk",
+          "icon": "/lab-assets/metric-disk.svg",
+          "href": "/#metric-disk",
+          "description": "项目与服务的数据空间"
+        }
+      },
+      {
+        "网络": {
+          "id": "metric-network",
+          "icon": "/lab-assets/metric-network.svg",
+          "href": "/#metric-network",
+          "description": "当前系统实际吞吐"
+        }
+      }
+    ]
+  },
+  "icons": [
+    "/lab-assets/brand-terminal.svg",
+    "/lab-assets/brand-code-server.svg",
+    "/lab-assets/brand-magpie.svg",
+    "/lab-assets/brand-files-ipados.svg",
+    "/lab-assets/brand-backup-ipados.svg",
+    "/lab-assets/metric-cpu.svg",
+    "/lab-assets/metric-disk.svg",
+    "/lab-assets/metric-memory.svg",
+    "/lab-assets/metric-network.svg"
+  ],
+  "backgrounds": [
+    "/lab-assets/default-wallpaper.svg",
+    ""
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "title": "HaloDeck · 工作台",
+  "description": "你的云端工作空间",
+  "language": "zh-CN",
+  "theme": "dark",
+  "color": "slate",
+  "background": {
+    "image": "/lab-assets/default-wallpaper.svg",
+    "opacity": 28
+  },
+  "cardBlur": "md",
+  "cardStyle": "hairline",
+  "blockStyle": "refined",
+  "headerStyle": "clean",
+  "hideVersion": true,
+  "disableUpdateCheck": true,
+  "disableIndexing": true,
+  "statusStyle": "basic",
+  "target": "_blank",
+  "useEqualHeights": true,
+  "disableCollapse": true,
+  "layout": {
+    "本机概览": {
+      "style": "row",
+      "columns": 4,
+      "header": false
+    },
+    "应用": {
+      "style": "row",
+      "columns": 3,
+      "header": false
+    }
+  }
+}

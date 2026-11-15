@@ -1,0 +1,23 @@
+[
+  {
+    "greeting": {
+      "text": "HaloDeck",
+      "text_size": "3xl"
+    }
+  },
+  {
+    "datetime": {
+      "text_size": "lg",
+      "locale": "zh-CN",
+      "format": {
+        "month": "long",
+        "day": "numeric",
+        "weekday": "short",
+        "hour": "2-digit",
+        "minute": "2-digit",
+        "hour12": false,
+        "timeZone": "Asia/Shanghai"
+      }
+    }
+  }
+]
