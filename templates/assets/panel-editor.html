@@ -5,7 +5,7 @@
   <header><a href="/" class="back">← 返回首页</a><div class="heading"><div><h1>编辑首页</h1><p>让常用的东西，待在顺手的位置。</p></div><button id="save" class="primary" disabled>保存到首页</button></div></header>
   <div id="notice" role="status" aria-live="polite">正在读取首页…</div>
   <form id="editor" hidden>
-    <section class="appearance"><h2>首页外观</h2><div class="fields"><label>首页名称<input id="title" maxlength="60" required></label><label>背景<select id="background"></select></label><label>背景强度 <output id="opacity-label"></output><input id="opacity" type="range" min="10" max="80"></label></div><div class="toggles"><label><input type="checkbox" id="show_metrics"> 显示实时资源</label><input type="checkbox" id="show_recent" hidden disabled></div></section>
+    <section class="appearance"><h2>首页外观</h2><div class="fields"><label>首页名称<input id="title" maxlength="60" required></label><label>背景<select id="background"></select></label><label>背景遮罩 <output id="opacity-label"></output><input id="opacity" type="range" min="10" max="80"></label></div><div class="toggles"><label><input type="checkbox" id="show_metrics"> 显示实时资源</label><input type="checkbox" id="show_recent" hidden disabled></div></section>
     <div class="section-head"><h2>入口与分组</h2><button type="button" id="add-group">＋ 添加分组</button></div>
     <p class="hint">展开入口即可修改。上下移动调整顺序，移除只影响首页。</p>
     <div id="groups"></div>
