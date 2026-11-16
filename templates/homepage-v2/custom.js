@@ -66,7 +66,7 @@
       const a=document.createElement('a');a.href=source.href;a.target='_blank';a.rel='noopener';a.title=card.querySelector('.service-name')?.textContent?.trim()||id;a.setAttribute('aria-label',a.title);a.innerHTML=card.querySelector('.service-icon')?.innerHTML||id;dock.append(a);
     }
     dock.insertAdjacentHTML('beforeend','<span class="hd-dock-separator"></span><button id="hd-edit" title="编辑布局" aria-label="编辑布局"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M14 17h7m-3.5-3.5v7"/></svg></button><button id="hd-wallpaper" title="壁纸与质感" aria-label="壁纸与质感"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="1.5"/><path d="m4 18 5-5 4 4 4-6 4 7"/></svg></button><button id="hd-settings" title="编辑首页" aria-label="编辑首页"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg></button>');
-    document.body.append(dock);$('#hd-edit').onclick=()=>editing?saveEdit():startEdit();$('#hd-wallpaper').onclick=()=>$('#lab-wallpaper-open')?.click();$('#hd-settings').onclick=openEditor;
+    document.body.append(dock);$('#hd-edit').onclick=()=>editing?saveEdit():startEdit();$('#hd-wallpaper').onclick=()=>$('#lab-wallpaper-open')?.click();$('#hd-settings').onclick=openEditor;$('#hd-settings').addEventListener('pointerenter',preloadEditor,{once:true});
     const editbar=document.createElement('div');editbar.id='hd-edit-bar';editbar.hidden=true;editbar.innerHTML='<span>拖动应用调整顺序</span><button id="hd-save">完成并保存</button><button id="hd-cancel">取消</button>';document.body.append(editbar);for(const [id,action] of [['hd-save',saveEdit],['hd-cancel',cancelEdit]]){const button=$('#'+id);let touched=0;button.onpointerup=e=>{if(e.pointerType==='touch'){e.preventDefault();touched=Date.now();action();}};button.onclick=()=>{if(Date.now()-touched>700)action();};}
   }
   let refreshing=false,lastRender='';
@@ -188,23 +188,30 @@
     const g=Math.max(0,Math.min(100,Math.round(Number(val)||0))),t=g/100,light=document.documentElement.dataset.hdTheme==='light',s=document.documentElement.style;
     const lerp=(a,b)=>a+(b-a)*t;
     s.setProperty('--hd-glass-blur',lerp(8,32).toFixed(1)+'px');
-    s.setProperty('--hd-glass-sat',Math.round(lerp(110,195))+'%');
+    s.setProperty('--hd-glass-sat',Math.round(lerp(110,205))+'%');
+    s.setProperty('--hd-glass-bright',lerp(1.0,1.08).toFixed(3));
     if(light){
-      s.setProperty('--hd-plate',`rgba(248,251,255,${lerp(.94,.46).toFixed(3)})`);
-      s.setProperty('--hd-glass-bg',`linear-gradient(145deg,rgba(255,255,255,${lerp(.35,.78).toFixed(3)}),rgba(235,245,255,${lerp(.08,.30).toFixed(3)}) 65%),rgba(242,248,254,${lerp(.93,.30).toFixed(3)})`);
-      s.setProperty('--hd-glass-hover',`linear-gradient(145deg,rgba(255,255,255,${lerp(.55,.90).toFixed(3)}),rgba(240,248,255,${lerp(.15,.44).toFixed(3)}) 65%),rgba(255,255,255,${lerp(.97,.52).toFixed(3)})`);
-      s.setProperty('--hd-glass-border',`rgba(255,255,255,${lerp(.45,.92).toFixed(3)})`);
-      s.setProperty('--hd-glass-shadow',`inset 0 1px 0 rgba(255,255,255,${lerp(.50,.98).toFixed(3)}),inset 0 -1px 0 rgba(255,255,255,${lerp(.10,.32).toFixed(3)}),0 ${Math.round(lerp(6,16))}px ${Math.round(lerp(18,36))}px rgba(32,57,87,${lerp(.09,.15).toFixed(3)})`);
-      s.setProperty('--hd-icon-bg',`linear-gradient(145deg,rgba(255,255,255,${lerp(.45,.82).toFixed(3)}),rgba(196,220,250,${lerp(.25,.42).toFixed(3)}))`);
-      s.setProperty('--hd-icon-shadow',`inset 0 1px 0 rgba(255,255,255,${lerp(.6,.98).toFixed(3)}),0 5px 12px rgba(24,42,64,.12)`);
+      s.setProperty('--hd-plate',`rgba(255,255,255,${lerp(.94,.44).toFixed(3)})`);
+      s.setProperty('--hd-glass-bg',`linear-gradient(135deg,rgba(255,255,255,${lerp(.42,.82).toFixed(3)}) 0%,rgba(255,255,255,${lerp(.12,.32).toFixed(3)}) 48%,rgba(255,255,255,${lerp(.04,.16).toFixed(3)}) 100%),rgba(246,250,255,${lerp(.93,.26).toFixed(3)})`);
+      s.setProperty('--hd-glass-hover',`linear-gradient(135deg,rgba(255,255,255,${lerp(.60,.94).toFixed(3)}) 0%,rgba(255,255,255,${lerp(.20,.46).toFixed(3)}) 50%,rgba(255,255,255,${lerp(.10,.26).toFixed(3)}) 100%),rgba(255,255,255,${lerp(.97,.44).toFixed(3)})`);
+      s.setProperty('--hd-glass-border',`rgba(255,255,255,${lerp(.48,.92).toFixed(3)})`);
+      s.setProperty('--hd-rim-grad',`linear-gradient(135deg,rgba(255,255,255,${lerp(.55,1).toFixed(3)}) 0%,rgba(255,255,255,${lerp(.25,.38).toFixed(3)}) 35%,rgba(255,255,255,${lerp(.15,.08).toFixed(3)}) 65%,rgba(255,255,255,${lerp(.40,.78).toFixed(3)}) 100%)`);
+      s.setProperty('--hd-rim-hover',`linear-gradient(135deg,rgba(255,255,255,1) 0%,rgba(255,255,255,${lerp(.35,.58).toFixed(3)}) 36%,rgba(255,255,255,${lerp(.20,.16).toFixed(3)}) 65%,rgba(255,255,255,${lerp(.55,.92).toFixed(3)}) 100%)`);
+      s.setProperty('--hd-glass-shadow',`inset 0 1px 1px rgba(255,255,255,${lerp(.55,.95).toFixed(3)}),0 ${Math.round(lerp(6,16))}px ${Math.round(lerp(18,38))}px rgba(15,23,42,${lerp(.06,.11).toFixed(3)})`);
+      s.setProperty('--hd-icon-bg',`linear-gradient(145deg,rgba(255,255,255,${lerp(.50,.88).toFixed(3)}),rgba(235,244,255,${lerp(.25,.42).toFixed(3)}))`);
+      s.setProperty('--hd-icon-border',`rgba(255,255,255,${lerp(.45,.86).toFixed(3)})`);
+      s.setProperty('--hd-icon-shadow',`inset 0 1px 1px rgba(255,255,255,${lerp(.65,.98).toFixed(3)}),0 6px 14px rgba(15,23,42,.09)`);
     }else{
-      s.setProperty('--hd-plate',`rgba(15,26,45,${lerp(.92,.38).toFixed(3)})`);
-      s.setProperty('--hd-glass-bg',`linear-gradient(145deg,rgba(255,255,255,${lerp(.03,.22).toFixed(3)}),rgba(186,214,255,${lerp(.01,.05).toFixed(3)}) 52%,rgba(12,24,44,${lerp(.08,.22).toFixed(3)})),rgba(15,27,47,${lerp(.90,.24).toFixed(3)})`);
-      s.setProperty('--hd-glass-hover',`linear-gradient(145deg,rgba(255,255,255,${lerp(.08,.30).toFixed(3)}),rgba(186,214,255,${lerp(.02,.08).toFixed(3)}) 54%,rgba(18,34,62,${lerp(.12,.28).toFixed(3)})),rgba(24,41,70,${lerp(.95,.36).toFixed(3)})`);
-      s.setProperty('--hd-glass-border',`rgba(255,255,255,${lerp(.10,.36).toFixed(3)})`);
-      s.setProperty('--hd-glass-shadow',`inset 0 1px 0 rgba(255,255,255,${lerp(.08,.42).toFixed(3)}),inset 0 -1px 0 rgba(255,255,255,${lerp(.01,.09).toFixed(3)}),0 ${Math.round(lerp(8,18))}px ${Math.round(lerp(20,42))}px rgba(2,6,18,${lerp(.22,.36).toFixed(3)})`);
-      s.setProperty('--hd-icon-bg',`linear-gradient(145deg,rgba(182,216,255,${lerp(.14,.36).toFixed(3)}),rgba(54,81,127,${lerp(.12,.22).toFixed(3)}))`);
-      s.setProperty('--hd-icon-shadow',`inset 0 1px 0 rgba(255,255,255,${lerp(.14,.48).toFixed(3)}),0 5px 14px rgba(2,6,23,.24)`);
+      s.setProperty('--hd-plate',`rgba(16,20,30,${lerp(.92,.36).toFixed(3)})`);
+      s.setProperty('--hd-glass-bg',`linear-gradient(135deg,rgba(255,255,255,${lerp(.04,.20).toFixed(3)}) 0%,rgba(255,255,255,${lerp(.01,.05).toFixed(3)}) 45%,rgba(255,255,255,${lerp(0,.015).toFixed(3)}) 100%),rgba(14,18,28,${lerp(.90,.24).toFixed(3)})`);
+      s.setProperty('--hd-glass-hover',`linear-gradient(135deg,rgba(255,255,255,${lerp(.08,.28).toFixed(3)}) 0%,rgba(255,255,255,${lerp(.02,.08).toFixed(3)}) 48%,rgba(255,255,255,${lerp(.01,.03).toFixed(3)}) 100%),rgba(20,26,40,${lerp(.94,.34).toFixed(3)})`);
+      s.setProperty('--hd-glass-border',`rgba(255,255,255,${lerp(.09,.24).toFixed(3)})`);
+      s.setProperty('--hd-rim-grad',`linear-gradient(135deg,rgba(255,255,255,${lerp(.14,.68).toFixed(3)}) 0%,rgba(255,255,255,${lerp(.06,.16).toFixed(3)}) 32%,rgba(255,255,255,${lerp(.02,.03).toFixed(3)}) 65%,rgba(255,255,255,${lerp(.08,.34).toFixed(3)}) 100%)`);
+      s.setProperty('--hd-rim-hover',`linear-gradient(135deg,rgba(255,255,255,${lerp(.22,.86).toFixed(3)}) 0%,rgba(255,255,255,${lerp(.10,.25).toFixed(3)}) 34%,rgba(255,255,255,${lerp(.04,.07).toFixed(3)}) 65%,rgba(255,255,255,${lerp(.14,.48).toFixed(3)}) 100%)`);
+      s.setProperty('--hd-glass-shadow',`inset 0 1px 1px rgba(255,255,255,${lerp(.06,.28).toFixed(3)}),0 ${Math.round(lerp(8,18))}px ${Math.round(lerp(20,42))}px rgba(0,0,0,${lerp(.24,.38).toFixed(3)})`);
+      s.setProperty('--hd-icon-bg',`linear-gradient(145deg,rgba(255,255,255,${lerp(.12,.30).toFixed(3)}),rgba(255,255,255,${lerp(.03,.06).toFixed(3)}))`);
+      s.setProperty('--hd-icon-border',`rgba(255,255,255,${lerp(.10,.30).toFixed(3)})`);
+      s.setProperty('--hd-icon-shadow',`inset 0 1px 1px rgba(255,255,255,${lerp(.14,.46).toFixed(3)}),0 6px 16px rgba(0,0,0,.22)`);
     }
     if(persist){try{localStorage.setItem(glassKey,String(g));}catch{}}
     $$('.hd-glass-slider').forEach(r=>{if(+r.value!==g)r.value=String(g);});
@@ -229,19 +236,19 @@
   window.__hdCreateGlassControl=createGlassControl;
   window.addEventListener('storage',e=>{if(e.key===glassKey||e.key===null)applyGlass();});
   applyGlass();
-  let edState=null,edModel=null,edDirty=false,edBusy=false;
+  let edState=null,edModel=null,edDirty=false,edBusy=false,edPreload=null;
   const edIconNames={'brand-code-server.svg':'VS Code','brand-terminal.svg':'终端','brand-dagu.svg':'任务','brand-copyparty.svg':'文件','brand-files-ipados.svg':'文件','brand-backup-ipados.svg':'备份','brand-linkding.svg':'书签','brand-magpie.svg':'Magpie','brand-beszel.svg':'监控','brand-backrest.svg':'备份','brand-cloudflare.svg':'恢复','brand-github.svg':'项目','metric-network.svg':'网页','metric-cpu.svg':'设备'};
+  function preloadEditor(){if(!edPreload)edPreload=request('/lab-api/editor').then(s=>{edState=s;return s;}).catch(()=>{edPreload=null;});return edPreload;}
   async function openEditor(){
     const d=dialog('hd-editor-modal','编辑首页');d.classList.add('hd-editor-dialog');
     const body=d.querySelector('.hd-dialog-body');
     if(!d.open)d.showModal();
-    body.innerHTML='<p class="hd-ed-notice" role="status">正在读取首页配置…</p>';
+    if(edState&&!edDirty){edModel=structuredClone(edState.model);edBusy=false;renderEditor(d,body);}
+    else body.innerHTML='<p class="hd-ed-notice" role="status">正在读取首页配置…</p>';
     try{
-      edState=await request('/lab-api/editor');
-      edModel=structuredClone(edState.model);
-      edDirty=false;edBusy=false;
-      renderEditor(d,body);
-    }catch(e){body.innerHTML='<p class="hd-ed-notice error">'+esc(e.message)+'</p>';}
+      const freshState=await request('/lab-api/editor');
+      if(!edDirty){edState=freshState;edModel=structuredClone(edState.model);edBusy=false;renderEditor(d,body);}
+    }catch(e){if(!edState)body.innerHTML='<p class="hd-ed-notice error">'+esc(e.message)+'</p>';}
   }
   function renderEditor(d,body,openId){
     const move=(arr,from,to)=>{if(to>=0&&to<arr.length)arr.splice(to,0,arr.splice(from,1)[0]);};
@@ -441,156 +448,6 @@
     trigger.onclick=async()=>{dialog.showModal();render();if(!busy)await load();};dialog.querySelector('.lab-wallpaper-close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>document.querySelector('#hd-wallpaper')?.focus());
     window.addEventListener('storage',async e=>{if(e.key===key||e.key===null){await load();apply(saved());}});
     render();load().then(()=>apply(saved()));
-  }
-  const glassKey='halodeck.glass.v1';
-  const glassLabel=v=>v<20?'经典磨砂':v<55?'轻柔玻璃':v<85?'液态玻璃':'极境透光';
-  function getGlass(){try{const v=Number(localStorage.getItem(glassKey));return Number.isFinite(v)?Math.max(0,Math.min(100,Math.round(v))):65;}catch{return 65;}}
-  function applyGlass(val=getGlass(),persist=false){
-    const g=Math.max(0,Math.min(100,Math.round(Number(val)||0))),t=g/100,light=document.documentElement.dataset.hdTheme==='light',s=document.documentElement.style;
-    const lerp=(a,b)=>a+(b-a)*t;
-    s.setProperty('--hd-glass-blur',lerp(8,32).toFixed(1)+'px');
-    s.setProperty('--hd-glass-sat',Math.round(lerp(110,195))+'%');
-    if(light){
-      s.setProperty('--hd-plate',`rgba(248,251,255,${lerp(.94,.46).toFixed(3)})`);
-      s.setProperty('--hd-glass-bg',`linear-gradient(145deg,rgba(255,255,255,${lerp(.35,.78).toFixed(3)}),rgba(235,245,255,${lerp(.08,.30).toFixed(3)}) 65%),rgba(242,248,254,${lerp(.93,.30).toFixed(3)})`);
-      s.setProperty('--hd-glass-hover',`linear-gradient(145deg,rgba(255,255,255,${lerp(.55,.90).toFixed(3)}),rgba(240,248,255,${lerp(.15,.44).toFixed(3)}) 65%),rgba(255,255,255,${lerp(.97,.52).toFixed(3)})`);
-      s.setProperty('--hd-glass-border',`rgba(255,255,255,${lerp(.45,.92).toFixed(3)})`);
-      s.setProperty('--hd-glass-shadow',`inset 0 1px 0 rgba(255,255,255,${lerp(.50,.98).toFixed(3)}),inset 0 -1px 0 rgba(255,255,255,${lerp(.10,.32).toFixed(3)}),0 ${Math.round(lerp(6,16))}px ${Math.round(lerp(18,36))}px rgba(32,57,87,${lerp(.09,.15).toFixed(3)})`);
-      s.setProperty('--hd-icon-bg',`linear-gradient(145deg,rgba(255,255,255,${lerp(.45,.82).toFixed(3)}),rgba(196,220,250,${lerp(.25,.42).toFixed(3)}))`);
-      s.setProperty('--hd-icon-shadow',`inset 0 1px 0 rgba(255,255,255,${lerp(.6,.98).toFixed(3)}),0 5px 12px rgba(24,42,64,.12)`);
-    }else{
-      s.setProperty('--hd-plate',`rgba(15,26,45,${lerp(.92,.38).toFixed(3)})`);
-      s.setProperty('--hd-glass-bg',`linear-gradient(145deg,rgba(255,255,255,${lerp(.03,.22).toFixed(3)}),rgba(186,214,255,${lerp(.01,.05).toFixed(3)}) 52%,rgba(12,24,44,${lerp(.08,.22).toFixed(3)})),rgba(15,27,47,${lerp(.90,.24).toFixed(3)})`);
-      s.setProperty('--hd-glass-hover',`linear-gradient(145deg,rgba(255,255,255,${lerp(.08,.30).toFixed(3)}),rgba(186,214,255,${lerp(.02,.08).toFixed(3)}) 54%,rgba(18,34,62,${lerp(.12,.28).toFixed(3)})),rgba(24,41,70,${lerp(.95,.36).toFixed(3)})`);
-      s.setProperty('--hd-glass-border',`rgba(255,255,255,${lerp(.10,.36).toFixed(3)})`);
-      s.setProperty('--hd-glass-shadow',`inset 0 1px 0 rgba(255,255,255,${lerp(.08,.42).toFixed(3)}),inset 0 -1px 0 rgba(255,255,255,${lerp(.01,.09).toFixed(3)}),0 ${Math.round(lerp(8,18))}px ${Math.round(lerp(20,42))}px rgba(2,6,18,${lerp(.22,.36).toFixed(3)})`);
-      s.setProperty('--hd-icon-bg',`linear-gradient(145deg,rgba(182,216,255,${lerp(.14,.36).toFixed(3)}),rgba(54,81,127,${lerp(.12,.22).toFixed(3)}))`);
-      s.setProperty('--hd-icon-shadow',`inset 0 1px 0 rgba(255,255,255,${lerp(.14,.48).toFixed(3)}),0 5px 14px rgba(2,6,23,.24)`);
-    }
-    if(persist){try{localStorage.setItem(glassKey,String(g));}catch{}}
-    $$('.hd-glass-slider').forEach(r=>{if(+r.value!==g)r.value=String(g);});
-    $$('.hd-glass-output').forEach(o=>o.textContent=glassLabel(g)+' · '+g+'%');
-    return g;
-  }
-  function createGlassControl(hostDialog){
-    const box=document.createElement('div');box.className='hd-glass-control';
-    const g=getGlass();
-    box.innerHTML='<div class="hd-glass-head"><span>图标与卡片质感</span><output class="hd-glass-output">'+glassLabel(g)+' · '+g+'%</output></div><input class="hd-glass-slider" type="range" min="0" max="100" value="'+g+'" aria-label="液态玻璃质感"><div class="hd-glass-scale"><span>经典磨砂</span><span>液态玻璃 (Liquid Glass)</span></div>';
-    const slider=box.querySelector('.hd-glass-slider');
-    const peekOn=()=>{if(hostDialog)hostDialog.classList.add('hd-peeking');};
-    const peekOff=()=>{if(hostDialog)hostDialog.classList.remove('hd-peeking');};
-    slider.addEventListener('pointerdown',peekOn);
-    slider.addEventListener('pointerup',peekOff);
-    slider.addEventListener('pointercancel',peekOff);
-    slider.addEventListener('blur',peekOff);
-    slider.addEventListener('input',()=>applyGlass(slider.value,true));
-    return box;
-  }
-  window.__hdApplyGlass=applyGlass;
-  window.__hdCreateGlassControl=createGlassControl;
-  window.addEventListener('storage',e=>{if(e.key===glassKey||e.key===null)applyGlass();});
-  applyGlass();
-  let edState=null,edModel=null,edDirty=false,edBusy=false;
-  const edIconNames={'brand-code-server.svg':'VS Code','brand-terminal.svg':'终端','brand-dagu.svg':'任务','brand-copyparty.svg':'文件','brand-files-ipados.svg':'文件','brand-backup-ipados.svg':'备份','brand-linkding.svg':'书签','brand-magpie.svg':'Magpie','brand-beszel.svg':'监控','brand-backrest.svg':'备份','brand-cloudflare.svg':'恢复','brand-github.svg':'项目','metric-network.svg':'网页','metric-cpu.svg':'设备'};
-  async function openEditor(){
-    const d=dialog('hd-editor-modal','编辑首页');d.classList.add('hd-editor-dialog');
-    const body=d.querySelector('.hd-dialog-body');
-    if(!d.open)d.showModal();
-    body.innerHTML='<p class="hd-ed-notice" role="status">正在读取首页配置…</p>';
-    try{
-      edState=await request('/lab-api/editor');
-      edModel=structuredClone(edState.model);
-      edDirty=false;edBusy=false;
-      renderEditor(d,body);
-    }catch(e){body.innerHTML='<p class="hd-ed-notice error">'+esc(e.message)+'</p>';}
-  }
-  function renderEditor(d,body,openId){
-    const move=(arr,from,to)=>{if(to>=0&&to<arr.length)arr.splice(to,0,arr.splice(from,1)[0]);};
-    body.innerHTML='<p class="hd-ed-notice" id="hd-ed-notice" role="status">'+(edDirty?'有未保存的修改。点击“保存到首页”后生效。':'直接在此修改，保存后自动更新首页。')+'</p><form id="hd-ed-form"><section class="hd-ed-section"><h3>外观与显示</h3><div id="hd-ed-glass-slot"></div><div class="hd-ed-row"><label class="hd-ed-field">首页名称<input id="hd-ed-title" maxlength="60" required value="'+esc(edModel.title)+'"></label><div class="hd-ed-quick"><button type="button" id="hd-ed-open-wp">壁纸与明暗</button><button type="button" id="hd-ed-sort">拖动排序</button></div></div><div class="hd-ed-toggles"><label><input type="checkbox" id="hd-ed-metrics" '+(edModel.show_metrics?'checked':'')+'> 显示实时资源监控</label></div></section><section class="hd-ed-section"><div class="hd-ed-head"><h3>入口与分组</h3><button type="button" id="hd-ed-add-group">＋ 添加分组</button></div><div id="hd-ed-groups"></div></section><section class="hd-ed-section"><h3>找回常用入口</h3><div class="hd-ed-library" id="hd-ed-library"></div></section><details class="hd-ed-section"><summary style="cursor:pointer;color:#9fb7d5;font-size:13px">导入、导出与撤销</summary><div class="hd-ed-tools"><button type="button" id="hd-ed-export">导出配置</button><button type="button" id="hd-ed-import">导入配置</button><input type="file" id="hd-ed-import-file" accept="application/json,.json" hidden><button type="button" id="hd-ed-undo">撤销上次保存</button></div></details><div class="hd-ed-footer"><span id="hd-ed-dirty">'+(edDirty?'有未保存的修改':'所有设备同步生效')+'</span><button type="submit" id="hd-ed-save" class="hd-primary" '+(edDirty&&!edBusy?'':'disabled')+'>保存到首页</button></div></form>';
-    $('#hd-ed-glass-slot').append(createGlassControl(d));
-    const notice=(msg,cls='')=>{const n=$('#hd-ed-notice');if(n){n.textContent=msg;n.className='hd-ed-notice'+(cls?' '+cls:'');}};
-    const markDirty=()=>{edDirty=true;$('#hd-ed-save').disabled=edBusy;$('#hd-ed-dirty').textContent='有未保存的修改';notice('有未保存的修改。点击“保存到首页”后生效。');};
-    const syncButtons=()=>{$('#hd-ed-save').disabled=edBusy||!edDirty;$('#hd-ed-undo').disabled=edBusy||!edState.can_undo;};
-    const renderGroups=()=>{
-      $('#hd-ed-groups').innerHTML=edModel.groups.map((g,gi)=>'<div class="hd-ed-group" data-group="'+gi+'"><div class="hd-ed-group-head"><input class="hd-ed-group-name" value="'+esc(g.name)+'" maxlength="30" required aria-label="分组名称"><div class="hd-ed-mini-btns"><button type="button" data-act="g-up" '+(gi===0?'disabled':'')+'>↑</button><button type="button" data-act="g-down" '+(gi===edModel.groups.length-1?'disabled':'')+'>↓</button><button type="button" data-act="g-del" class="hd-ed-remove">移除</button></div></div>'+g.items.map((item,ii)=>'<details class="hd-ed-item" data-item="'+ii+'" '+(item.id===openId?'open':'')+'><summary><img src="'+esc(item.icon)+'" alt=""><div class="hd-ed-item-title"><strong>'+esc(item.name)+'</strong><small>'+esc(item.href)+'</small></div><span class="hd-ed-expand">编辑</span></summary><div class="hd-ed-item-grid"><label class="hd-ed-field">名称<input data-f="name" value="'+esc(item.name)+'" maxlength="40" required></label><label class="hd-ed-field">图标<select data-f="icon">'+edState.icons.map(ic=>'<option value="'+esc(ic)+'" '+(ic===item.icon?'selected':'')+'>'+esc(edIconNames[ic.split('/').pop()]||ic.split('/').pop())+'</option>').join('')+'</select></label><label class="hd-ed-field hd-ed-wide">网址<input data-f="href" value="'+esc(item.href)+'" maxlength="2000" required></label><label class="hd-ed-field hd-ed-wide">简短说明<input data-f="description" value="'+esc(item.description)+'" maxlength="100"></label><div class="hd-ed-item-actions"><div class="hd-ed-mini-btns"><button type="button" data-act="i-up" '+(ii===0?'disabled':'')+'>↑</button><button type="button" data-act="i-down" '+(ii===g.items.length-1?'disabled':'')+'>↓</button><button type="button" data-act="i-del" class="hd-ed-remove">移除</button></div><select class="hd-ed-move-group" aria-label="移动到分组">'+edModel.groups.map((grp,idx)=>'<option value="'+idx+'" '+(idx===gi?'selected':'')+'>移至：'+esc(grp.name)+'</option>').join('')+'</select></div></div></details>').join('')+'<button type="button" class="hd-ed-add-item" data-act="i-add">＋ 添加入口</button></div>').join('');
-      const ids=new Set(edModel.groups.flatMap(g=>g.items.map(i=>i.id)));
-      $('#hd-ed-library').innerHTML=edState.catalog.filter(i=>!ids.has(i.id)).map(i=>'<button type="button" data-restore="'+esc(i.id)+'">＋ '+esc(i.name)+'</button>').join('')||'<span class="hd-note">常用入口都已放在首页。</span>';
-      syncButtons();
-    };
-    renderGroups();
-    $('#hd-ed-open-wp').onclick=()=>{d.close();$('#lab-wallpaper-open')?.click();};
-    $('#hd-ed-sort').onclick=()=>{d.close();startEdit();};
-    $('#hd-ed-form').addEventListener('input',e=>{
-      const t=e.target;
-      if(t.id==='hd-ed-title')edModel.title=t.value;
-      else if(t.id==='hd-ed-metrics')edModel.show_metrics=t.checked;
-      else if(t.matches('.hd-ed-group-name'))edModel.groups[+t.closest('[data-group]').dataset.group].name=t.value;
-      else if(t.dataset.f){
-        const row=t.closest('[data-item]'),gi=+t.closest('[data-group]').dataset.group,item=edModel.groups[gi].items[+row.dataset.item];
-        item[t.dataset.f]=t.value;
-        if(t.dataset.f==='name')row.querySelector('.hd-ed-item-title strong').textContent=t.value;
-        if(t.dataset.f==='href')row.querySelector('.hd-ed-item-title small').textContent=t.value;
-        if(t.dataset.f==='icon')row.querySelector('img').src=t.value;
-      }else return;
-      markDirty();
-    });
-    $('#hd-ed-groups').onchange=e=>{
-      if(!e.target.matches('.hd-ed-move-group'))return;
-      const gi=+e.target.closest('[data-group]').dataset.group,ii=+e.target.closest('[data-item]').dataset.item,to=+e.target.value;
-      const item=edModel.groups[gi].items.splice(ii,1)[0];edModel.groups[to].items.push(item);
-      openId=item.id;markDirty();renderGroups();
-    };
-    $('#hd-ed-groups').onclick=e=>{
-      const btn=e.target.closest('button[data-act]');if(!btn)return;
-      const gi=+btn.closest('[data-group]').dataset.group,g=edModel.groups[gi],row=btn.closest('[data-item]'),ii=row?+row.dataset.item:null;
-      openId=undefined;
-      switch(btn.dataset.act){
-        case 'g-up':move(edModel.groups,gi,gi-1);break;
-        case 'g-down':move(edModel.groups,gi,gi+1);break;
-        case 'g-del':if(!confirm('移除分组“'+g.name+'”？'))return;edModel.groups.splice(gi,1);break;
-        case 'i-up':openId=g.items[ii].id;move(g.items,ii,ii-1);break;
-        case 'i-down':openId=g.items[ii].id;move(g.items,ii,ii+1);break;
-        case 'i-del':if(!confirm('移除入口“'+g.items[ii].name+'”？'))return;g.items.splice(ii,1);break;
-        case 'i-add':openId='custom-'+crypto.randomUUID().replaceAll('-','').slice(0,16);g.items.push({id:openId,name:'新入口',href:'https://',description:'',icon:'/lab-assets/metric-network.svg'});break;
-      }
-      markDirty();renderGroups();if(openId)body.querySelector('details[open] input')?.focus();
-    };
-    $('#hd-ed-add-group').onclick=()=>{edModel.groups.push({name:'新分组',items:[]});markDirty();renderGroups();$('#hd-ed-groups .hd-ed-group:last-child .hd-ed-group-name')?.focus();};
-    $('#hd-ed-library').onclick=e=>{
-      const b=e.target.closest('[data-restore]');if(!b)return;
-      if(!edModel.groups.length)edModel.groups.push({name:'常用工具',items:[]});
-      const item=structuredClone(edState.catalog.find(i=>i.id===b.dataset.restore));if(!item)return;
-      edModel.groups[0].items.push(item);openId=item.id;markDirty();renderGroups();
-    };
-    $('#hd-ed-export').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({format:'asashiki-panel-v1',model:edModel},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='asashiki-homepage.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
-    $('#hd-ed-import').onclick=()=>$('#hd-ed-import-file').click();
-    $('#hd-ed-import-file').onchange=async e=>{
-      const file=e.target.files[0];e.target.value='';if(!file)return;
-      try{
-        if(file.size>100000)throw Error('配置文件不能超过 100KB');
-        const input=JSON.parse(await file.text());
-        if(input.format!=='asashiki-panel-v1'||!Array.isArray(input.model?.groups))throw Error('请选择有效配置');
-        const m=input.model;
-        if(typeof m.title!=='string'||!edState.backgrounds.includes(m.background)||!Number.isInteger(m.opacity)||typeof m.show_metrics!=='boolean'||typeof m.show_recent!=='boolean'||m.groups.length>12)throw Error('配置字段不完整');
-        for(const g of m.groups){if(typeof g.name!=='string'||!Array.isArray(g.items)||g.items.length>24)throw Error('分组格式不正确');for(const i of g.items){if(!['id','name','href','description','icon'].every(k=>typeof i[k]==='string')||!edState.icons.includes(i.icon))throw Error('入口格式不正确');}}
-        edModel=m;markDirty();renderEditor(d,body);notice('配置已导入草稿，点击“保存到首页”生效。');
-      }catch(err){notice('未导入：'+err.message,'error');}
-    };
-    $('#hd-ed-undo').onclick=async()=>{
-      if(!confirm('撤销上次保存？当前未保存的修改将舍弃。'))return;
-      edBusy=true;syncButtons();notice('正在撤销…');
-      try{await request('/lab-api/editor/undo',{method:'POST',headers:{'Content-Type':'application/json','X-Lab-Editor':'1'},body:JSON.stringify({revision:edState.revision})});toast('已恢复上次保存，正在刷新首页…');d.close();location.reload();}
-      catch(err){notice(err.message,'error');edBusy=false;syncButtons();}
-    };
-    $('#hd-ed-form').onsubmit=async e=>{
-      e.preventDefault();if(!$('#hd-ed-form').reportValidity())return;
-      edBusy=true;syncButtons();notice('正在保存…');
-      try{
-        const res=await fetch('/lab-api/editor',{method:'POST',headers:{'Content-Type':'application/json','X-Lab-Editor':'1'},body:JSON.stringify({revision:edState.revision,model:edModel})});
-        if(!res.ok)throw Error(await res.text());
-        edDirty=false;d.close();toast('首页已更新，正在刷新…');setTimeout(()=>location.reload(),350);
-      }catch(err){notice(err.message,'error');edBusy=false;syncButtons();}
-    };
   }
   setup();
 })();
