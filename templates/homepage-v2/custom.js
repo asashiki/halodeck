@@ -1,6 +1,7 @@
 /* HaloDeck — Homepage stays the renderer and canonical layout owner. */
 (() => {
   if(window.__halodeck)return;window.__halodeck=true;
+  try{const t=localStorage.getItem('halodeck.appearance.v1');document.documentElement.dataset.hdTheme=t==='light'?'light':'dark';}catch{}
   const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const time=t=>new Date(t).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false});
@@ -45,7 +46,10 @@
     });
     const footer=document.createElement('div');footer.className='lab-footer';footer.innerHTML='<span>HaloDeck <span class="hd-footer-dot">·</span> 你的云端工作空间</span><span></span>';$('#footer').prepend(footer);
     setupDock();setupOrdering();
-    $('#lab-search').oninput=()=>{const q=$('#lab-search').value.toLowerCase().trim();$$('[id^="app-"],[id^="custom-"]').forEach(n=>n.hidden=!n.querySelector('.service-name')?.textContent.toLowerCase().includes(q));};
+    const empty=document.createElement('p');empty.id='hd-search-empty';empty.hidden=true;empty.textContent='没有找到匹配的应用，按 Esc 清空搜索';$('#layout-groups').append(empty);
+    const searchInput=$('#lab-search');
+    searchInput.oninput=()=>{const q=searchInput.value.toLowerCase().trim(),apps=$$('[id^="app-"],[id^="custom-"]');let shown=0;apps.forEach(n=>{const hit=!q||!!n.querySelector('.service-name')?.textContent.toLowerCase().includes(q);n.hidden=!hit;if(hit)shown++;});empty.hidden=shown>0||!q;};
+    searchInput.onkeydown=e=>{if(e.key==='Enter'){const first=$$('[id^="app-"],[id^="custom-"]').find(n=>!n.hidden);const link=first?.querySelector('a');if(link){e.preventDefault();link.click();}}else if(e.key==='Escape'&&searchInput.value){e.stopPropagation();searchInput.value='';searchInput.oninput();searchInput.blur();}};
     document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)&&!$('dialog[open]')){e.preventDefault();$('#lab-search').focus();}if(e.key==='Escape'){hidePopover();if(editing&&!saving)cancelEdit();}});
     document.addEventListener('click',e=>{if(!e.target.closest('.lab-liveness-seg')&&!e.target.closest('#halodeck-liveness-popover'))hidePopover();});
     window.addEventListener('scroll',hidePopover,{passive:true});
@@ -69,16 +73,16 @@
     document.body.append(dock);$('#hd-edit').onclick=()=>editing?saveEdit():startEdit();$('#hd-wallpaper').onclick=()=>$('#lab-wallpaper-open')?.click();$('#hd-settings').onclick=openEditor;$('#hd-settings').addEventListener('pointerenter',preloadEditor,{once:true});
     const editbar=document.createElement('div');editbar.id='hd-edit-bar';editbar.hidden=true;editbar.innerHTML='<span>拖动应用调整顺序</span><button id="hd-save">完成并保存</button><button id="hd-cancel">取消</button>';document.body.append(editbar);for(const [id,action] of [['hd-save',saveEdit],['hd-cancel',cancelEdit]]){const button=$('#'+id);let touched=0;button.onpointerup=e=>{if(e.pointerType==='touch'){e.preventDefault();touched=Date.now();action();}};button.onclick=()=>{if(Date.now()-touched>700)action();};}
   }
-  let refreshing=false,lastRender='';
+  let refreshing=false,lastRender='',lastFetchAt=0;
   async function refresh(){
-    if(document.hidden||refreshing)return;refreshing=true;
+    if(document.hidden||refreshing)return;refreshing=true;lastFetchAt=Date.now();
     try{
       const w=windowSize;const results=await Promise.allSettled(['/lab-api/dashboard','/lab-api/status','/lab-api/liveness?window='+w].map(u=>request(u)));
       if(results[0].status==='fulfilled')data=results[0].value;if(results[1].status==='fulfilled')snapshot=results[1].value;if(results[2].status==='fulfilled'&&w===windowSize)live=results[2].value;
       checkFresh();drawLive();
     }catch{checkFresh();}finally{refreshing=false;}
   }
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden){checkFresh();refresh();}});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){checkFresh();if(Date.now()-lastFetchAt>4000)refresh();}});
   function checkFresh(){
     if(document.hidden)return;
     const valid=fresh(data)&&fresh(snapshot);document.documentElement.classList.toggle('lab-stale',!valid);
@@ -221,7 +225,7 @@
   function createGlassControl(hostDialog){
     const box=document.createElement('div');box.className='hd-glass-control';
     const g=getGlass();
-    box.innerHTML='<div class="hd-glass-head"><span>图标与卡片质感</span><output class="hd-glass-output">'+glassLabel(g)+' · '+g+'%</output></div><input class="hd-glass-slider" type="range" min="0" max="100" value="'+g+'" aria-label="液态玻璃质感"><div class="hd-glass-scale"><span>经典磨砂</span><span>液态玻璃 (Liquid Glass)</span></div>';
+    box.innerHTML='<div class="hd-glass-head"><span>图标与卡片质感</span><output class="hd-glass-output">'+glassLabel(g)+' · '+g+'%</output></div><input class="hd-glass-slider" type="range" min="0" max="100" value="'+g+'" aria-label="液态玻璃质感"><div class="hd-glass-presets"><button type="button" data-glass="0">经典磨砂</button><button type="button" data-glass="55">平衡玻璃</button><button type="button" data-glass="88">Liquid Glass</button></div>';
     const slider=box.querySelector('.hd-glass-slider');
     const peekOn=()=>{if(hostDialog)hostDialog.classList.add('hd-peeking');};
     const peekOff=()=>{if(hostDialog)hostDialog.classList.remove('hd-peeking');};
@@ -230,6 +234,7 @@
     slider.addEventListener('pointercancel',peekOff);
     slider.addEventListener('blur',peekOff);
     slider.addEventListener('input',()=>applyGlass(slider.value,true));
+    box.querySelectorAll('[data-glass]').forEach(b=>b.onclick=()=>applyGlass(b.dataset.glass,true));
     return box;
   }
   window.__hdApplyGlass=applyGlass;
