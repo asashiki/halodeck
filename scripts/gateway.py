@@ -203,9 +203,9 @@ async def top(request):
     return web.json_response(await native_metrics.top(request.app['data'].get('snapshot',{})))
 
 def pwa_html(body, content_type):
-    # Homepage ships its own manifest first; browsers must see only HaloDeck's.
-    body = re.sub(rb"<link\b[^>]*\brel=[\"']manifest[\"'][^>]*>", b'', body, flags=re.I)
-    tags = b'<link rel="manifest" href="/lab-assets/manifest.webmanifest" crossorigin="use-credentials"><meta name="theme-color" content="#0b1120"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="HaloDeck"><link rel="apple-touch-icon" href="/lab-assets/halodeck-apple-touch.png">'
+    # Homepage ships its own manifest and default icons; browsers must see only HaloDeck's.
+    body = re.sub(rb"<link\b[^>]*\brel=[\"'](?:manifest|(?:shortcut\s+)?icon|apple-touch-icon|mask-icon)[\"'][^>]*>", b'', body, flags=re.I)
+    tags = b'<link rel="manifest" href="/lab-assets/manifest.webmanifest?v=2" crossorigin="use-credentials"><link rel="icon" type="image/svg+xml" href="/lab-assets/halodeck-favicon.svg?v=2"><link rel="icon" type="image/png" sizes="192x192" href="/lab-assets/halodeck-icon-192.png?v=2"><meta name="theme-color" content="#0b1120"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="HaloDeck"><link rel="apple-touch-icon" sizes="180x180" href="/lab-assets/halodeck-apple-touch.png?v=2">'
     return body.replace(b'</head>', tags+b'</head>', 1)
 
 async def catalog(request):

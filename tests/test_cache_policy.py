@@ -22,8 +22,11 @@ class CachePolicyTests(unittest.TestCase):
 class ManifestTests(unittest.TestCase):
     def test_homepage_manifest_is_replaced_not_duplicated(self):
         import gateway
-        body=b'<html><head><link rel="manifest" href="/site.webmanifest?v=4"></head></html>'
+        body=b'<html><head><link rel="shortcut icon" href="/homepage.ico"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=4"><link rel="manifest" href="/site.webmanifest?v=4"></head></html>'
         result=gateway.pwa_html(body,'text/html')
         self.assertEqual(result.count(b'rel="manifest"'),1)
         self.assertNotIn(b'/site.webmanifest',result)
+        self.assertNotIn(b'/homepage.ico',result)
+        self.assertNotIn(b'/favicon-32x32.png',result)
+        self.assertIn(b'/lab-assets/halodeck-favicon.svg',result)
         self.assertIn(b'crossorigin="use-credentials"',result)
