@@ -205,8 +205,22 @@ async def top(request):
 def pwa_html(body, content_type):
     # Homepage ships its own manifest and default icons; browsers must see only HaloDeck's.
     body = re.sub(rb"<link\b[^>]*\brel=[\"'](?:manifest|(?:shortcut\s+)?icon|apple-touch-icon|mask-icon)[\"'][^>]*>", b'', body, flags=re.I)
-    tags = b'<link rel="manifest" href="/lab-assets/manifest.webmanifest?v=2" crossorigin="use-credentials"><link rel="icon" type="image/svg+xml" href="/lab-assets/halodeck-favicon.svg?v=2"><link rel="icon" type="image/png" sizes="192x192" href="/lab-assets/halodeck-icon-192.png?v=2"><meta name="theme-color" content="#0b1120"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="HaloDeck"><link rel="apple-touch-icon" sizes="180x180" href="/lab-assets/halodeck-apple-touch.png?v=2">'
+    tags = b'<link rel="manifest" href="/lab-assets/manifest.webmanifest?v=3" crossorigin="use-credentials"><link rel="icon" type="image/svg+xml" href="/lab-assets/halodeck-favicon.svg?v=3"><link rel="shortcut icon" href="/lab-assets/halodeck.ico?v=3"><link rel="icon" type="image/png" sizes="192x192" href="/lab-assets/halodeck-icon-192.png?v=3"><meta name="theme-color" content="#0b1120"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="HaloDeck"><link rel="apple-touch-icon" sizes="180x180" href="/lab-assets/halodeck-apple-touch.png?v=3">'
     return body.replace(b'</head>', tags+b'</head>', 1)
+
+async def brand_icon(request):
+    mapping = {
+        '/favicon.ico': ('halodeck.ico', 'image/x-icon'),
+        '/homepage.ico': ('halodeck.ico', 'image/x-icon'),
+        '/favicon-32x32.png': ('halodeck-icon-192.png', 'image/png'),
+        '/favicon-16x16.png': ('halodeck-icon-192.png', 'image/png'),
+        '/apple-touch-icon.png': ('halodeck-apple-touch.png', 'image/png'),
+        '/safari-pinned-tab.svg': ('halodeck-favicon.svg', 'image/svg+xml'),
+    }
+    filename, ctype = mapping[request.path]
+    response = web.FileResponse(ROOT/'config/assets'/filename, headers={'Cache-Control': 'private, no-cache'})
+    response.content_type = ctype
+    return response
 
 async def catalog(request):
     return web.json_response(json.loads((ROOT/'config/catalog.json').read_text()))
@@ -220,6 +234,7 @@ async def assets(request):
     cache='private, max-age=86400' if Path(name).suffix.lower() in {'.jpg','.jpeg','.png','.svg','.woff','.woff2'} else 'private, no-cache'
     response=web.FileResponse(ROOT/'config/assets'/name,headers={'Cache-Control':cache})
     if name.endswith('.webmanifest'): response.content_type='application/manifest+json'
+    elif name.endswith('.ico'): response.content_type='image/x-icon'
     return response
 
 async def dispatch(request):
@@ -276,5 +291,7 @@ app.router.add_get('/lab-api/dashboard/widget/{name}', dashboard_widget)
 app.router.add_get('/lab-api/health/{name}',service_health)
 app.router.add_get('/lab-api/catalog', catalog)
 app.router.add_get('/lab-assets/{name}', assets)
+for _icon_path in ('/favicon.ico','/homepage.ico','/favicon-32x32.png','/favicon-16x16.png','/apple-touch-icon.png','/safari-pinned-tab.svg'):
+    app.router.add_get(_icon_path, brand_icon)
 app.router.add_route('*', '/{tail:.*}', dispatch)
 if __name__ == '__main__': web.run_app(app, host='127.0.0.1', port=GATEWAY_PORT, access_log=None)

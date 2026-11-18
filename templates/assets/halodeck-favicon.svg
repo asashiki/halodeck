@@ -1,62 +1,53 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0f172a"/>
-      <stop offset="50%" stop-color="#17254a"/>
-      <stop offset="100%" stop-color="#090d1a"/>
+      <stop offset="0%" stop-color="#192347"/>
+      <stop offset="52%" stop-color="#111834"/>
+      <stop offset="100%" stop-color="#090d1e"/>
     </linearGradient>
-    <radialGradient id="nebula1" cx="25%" cy="22%" r="65%">
-      <stop offset="0%" stop-color="#38bdf8" stop-opacity=".35"/>
+    <radialGradient id="aura1" cx="22%" cy="20%" r="72%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity=".48"/>
       <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="nebula2" cx="80%" cy="78%" r="60%">
-      <stop offset="0%" stop-color="#818cf8" stop-opacity=".35"/>
-      <stop offset="100%" stop-color="#818cf8" stop-opacity="0"/>
+    <radialGradient id="aura2" cx="82%" cy="84%" r="68%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity=".42"/>
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="haloGrad" x1="120" y1="90" x2="400" y2="390" gradientUnits="userSpaceOnUse">
+    <linearGradient id="ring" x1="100" y1="90" x2="412" y2="422" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#a5f3fc"/>
-      <stop offset="48%" stop-color="#38bdf8"/>
+      <stop offset="45%" stop-color="#38bdf8"/>
       <stop offset="100%" stop-color="#818cf8"/>
     </linearGradient>
-    <linearGradient id="deckFill" x1="110" y1="295" x2="400" y2="415" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity=".46"/>
-      <stop offset="55%" stop-color="#e0f2fe" stop-opacity=".22"/>
-      <stop offset="100%" stop-color="#c7d2fe" stop-opacity=".14"/>
-    </linearGradient>
-    <linearGradient id="deckRim" x1="110" y1="295" x2="400" y2="415" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity=".92"/>
-      <stop offset="50%" stop-color="#bae6fd" stop-opacity=".35"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity=".65"/>
+    <linearGradient id="prism" x1="176" y1="168" x2="336" y2="344" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="65%" stop-color="#e0f2fe"/>
+      <stop offset="100%" stop-color="#bae6fd"/>
     </linearGradient>
     <linearGradient id="outerRim" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity=".34"/>
-      <stop offset="50%" stop-color="#ffffff" stop-opacity=".06"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity=".18"/>
+      <stop offset="0%" stop-color="#ffffff" stop-opacity=".42"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity=".08"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity=".22"/>
     </linearGradient>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="16" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter id="haloGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="20" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="160%">
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
       <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#020617" flood-opacity=".55"/>
     </filter>
   </defs>
   <rect width="512" height="512" rx="118" fill="url(#bg)"/>
-  <rect width="512" height="512" rx="118" fill="url(#nebula1)"/>
-  <rect width="512" height="512" rx="118" fill="url(#nebula2)"/>
+  <rect width="512" height="512" rx="118" fill="url(#aura1)"/>
+  <rect width="512" height="512" rx="118" fill="url(#aura2)"/>
   <rect x="3" y="3" width="506" height="506" rx="115" fill="none" stroke="url(#outerRim)" stroke-width="5"/>
-  <!-- Halo ring with atmospheric glow -->
-  <circle cx="256" cy="228" r="118" fill="none" stroke="url(#haloGrad)" stroke-width="34" filter="url(#glow)" opacity=".96"/>
-  <path d="M168 150 A118 118 0 0 1 344 150" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round" opacity=".55"/>
-  <!-- Floating frosted glass Deck card -->
-  <g filter="url(#cardShadow)">
-    <rect x="108" y="294" width="296" height="94" rx="28" fill="#172646" fill-opacity=".58"/>
-    <rect x="108" y="294" width="296" height="94" rx="28" fill="url(#deckFill)" stroke="url(#deckRim)" stroke-width="3.5"/>
-    <rect x="138" y="325" width="96" height="12" rx="6" fill="#ffffff" fill-opacity=".86"/>
-    <rect x="138" y="349" width="58" height="9" rx="4.5" fill="#bae6fd" fill-opacity=".58"/>
-    <circle cx="358" cy="341" r="14" fill="#67e8f9"/>
-    <circle cx="358" cy="341" r="7" fill="#ffffff" opacity=".8"/>
+  <!-- Luminous Halo Ring -->
+  <circle cx="256" cy="256" r="144" fill="none" stroke="url(#ring)" stroke-width="46" filter="url(#haloGlow)"/>
+  <path d="M148 164 A144 144 0 0 1 364 164" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity=".52"/>
+  <!-- Inner frosted glass lens disc -->
+  <circle cx="256" cy="256" r="94" fill="#131c3d" fill-opacity=".62" stroke="#ffffff" stroke-opacity=".22" stroke-width="3"/>
+  <!-- Center 4-point Prism Star (crisp even at 16px) -->
+  <g filter="url(#softShadow)">
+    <path d="M256 154 C264 218 294 248 358 256 C294 264 264 294 256 358 C248 294 218 264 154 256 C218 248 248 218 256 154 Z" fill="url(#prism)"/>
+    <path d="M256 154 C264 218 294 248 358 256 L256 256 Z" fill="#ffffff" opacity=".45"/>
   </g>
-  <!-- Starlight spark -->
-  <path d="M388 104 L394 126 L416 132 L394 138 L388 160 L382 138 L360 132 L382 126 Z" fill="#e0f7ff" filter="url(#glow)"/>
 </svg>

@@ -3,6 +3,14 @@
   if(window.__halodeck)return;window.__halodeck=true;
   try{const t=localStorage.getItem('halodeck.appearance.v1');document.documentElement.dataset.hdTheme=t==='light'?'light':'dark';}catch{}
   const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+  function enforceBrandIcons(){
+    const h=document.head;if(!h)return;
+    h.querySelectorAll('link[rel*="icon"]').forEach(el=>{const href=el.getAttribute('href')||'';if(!href.startsWith('/lab-assets/halodeck'))el.remove();});
+    if(!h.querySelector('link[href^="/lab-assets/halodeck-favicon.svg"]')){const l=document.createElement('link');l.rel='icon';l.type='image/svg+xml';l.href='/lab-assets/halodeck-favicon.svg?v=3';h.append(l);}
+    if(!h.querySelector('link[href^="/lab-assets/halodeck.ico"]')){const l=document.createElement('link');l.rel='shortcut icon';l.href='/lab-assets/halodeck.ico?v=3';h.append(l);}
+  }
+  enforceBrandIcons();
+  if(document.head){const obs=new MutationObserver(enforceBrandIcons);obs.observe(document.head,{childList:true});setTimeout(()=>obs.disconnect(),8000);}
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const time=t=>new Date(t).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false});
   const full=t=>new Date(t).toLocaleString('zh-CN',{hour12:false});
