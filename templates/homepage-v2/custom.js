@@ -24,7 +24,11 @@
   const keys=['cpu','memory','disk','network'],names={cpu:'CPU',memory:'内存',disk:'工作区磁盘',network:'网络'};
   async function request(url,options={}){
     const r=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(45000),...options});
-    if(!r.ok){const e=Error(r.status===409?'首页已在别处修改，已同步最新排序，请重新调整。':'操作未完成，请稍后重试。');e.status=r.status;throw e;}
+    if(!r.ok){
+      let msg='';try{msg=(await r.text()).trim();}catch{}
+      const e=Error(r.status===409?'首页已在别处修改，已同步最新排序，请重新调整。':(msg||('操作未完成 ('+r.status+')')));
+      e.status=r.status;throw e;
+    }
     try{return await r.json();}catch{throw Error('登录可能已过期，请刷新页面。');}
   }
   function dialog(id,title){
@@ -62,7 +66,7 @@
     document.addEventListener('click',e=>{if(!e.target.closest('.lab-liveness-seg')&&!e.target.closest('#halodeck-liveness-popover'))hidePopover();});
     window.addEventListener('scroll',hidePopover,{passive:true});
     const backup=$('#app-backup');backup?.addEventListener('click',e=>{if(editing)return;e.preventDefault();showBackup();});
-    refresh();setInterval(refresh,15000);setInterval(checkFresh,2000);
+    refresh();setInterval(refresh,15000);setInterval(checkFresh,2000);setTimeout(preloadEditor,1500);
   }
   function showInstall(){
     const d=dialog('hd-install-modal','安装 HaloDeck'),body=d.querySelector('.hd-dialog-body');
@@ -79,7 +83,8 @@
     }
     dock.insertAdjacentHTML('beforeend','<span class="hd-dock-separator"></span><button id="hd-edit" title="编辑布局" aria-label="编辑布局"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M14 17h7m-3.5-3.5v7"/></svg></button><button id="hd-wallpaper" title="壁纸与质感" aria-label="壁纸与质感"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="1.5"/><path d="m4 18 5-5 4 4 4-6 4 7"/></svg></button><button id="hd-settings" title="编辑首页" aria-label="编辑首页"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg></button>');
     document.body.append(dock);$('#hd-edit').onclick=()=>editing?saveEdit():startEdit();$('#hd-wallpaper').onclick=()=>$('#lab-wallpaper-open')?.click();$('#hd-settings').onclick=openEditor;$('#hd-settings').addEventListener('pointerenter',preloadEditor,{once:true});
-    const editbar=document.createElement('div');editbar.id='hd-edit-bar';editbar.hidden=true;editbar.innerHTML='<span>拖动应用调整顺序</span><button id="hd-save">完成并保存</button><button id="hd-cancel">取消</button>';document.body.append(editbar);for(const [id,action] of [['hd-save',saveEdit],['hd-cancel',cancelEdit]]){const button=$('#'+id);let touched=0;button.onpointerup=e=>{if(e.pointerType==='touch'){e.preventDefault();touched=Date.now();action();}};button.onclick=()=>{if(Date.now()-touched>700)action();};}
+    const editbar=document.createElement('div');editbar.id='hd-edit-bar';editbar.hidden=true;editbar.innerHTML='<span>拖动卡片排序</span><button type="button" id="hd-save">保存</button><button type="button" id="hd-cancel">取消</button>';document.body.append(editbar);
+    $('#hd-save').onclick=saveEdit;$('#hd-cancel').onclick=cancelEdit;
   }
   let refreshing=false,lastRender='',lastFetchAt=0;
   async function refresh(){
@@ -160,37 +165,110 @@
     $('#hd-snapshot').onclick=async e=>{e.target.disabled=true;try{await request('/lab-api/backup/snapshot',{method:'POST',headers:{'Content-Type':'application/json','X-Lab-Editor':'1'},body:'{}'});$('#hd-backup-result').textContent='已加入备份队列，稍后重新打开查看结果。';}catch(error){$('#hd-backup-result').textContent=error.message;e.target.disabled=false;}};
   }
   const cards=()=>$$('[id^="app-"],[id^="custom-"]');
-  async function startEdit(){
-    if(editing)return;
-    try{editBase=await request('/lab-api/editor');}catch(e){toast(e.message);return;}
-    original=cards().map(n=>({node:n,parent:n.parentElement}));editing=true;document.body.classList.add('halodeck-editing');$('#hd-edit-bar').hidden=false;$('#hd-edit').setAttribute('aria-pressed','true');$('#lab-search').value='';$('#lab-search').oninput();cards().forEach(n=>n.draggable=true);toast('拖动排序，也可聚焦应用后按 Alt + 方向键。');
+  async function startEdit(instant=false){
+    if(editing)return editing;
+    if(instant&&edState){
+      editBase=edState;
+      request('/lab-api/editor').then(s=>{edState=s;edPreload=Promise.resolve(s);if(editing&&!saving)editBase=s;}).catch(()=>{});
+    }else{
+      try{editBase=await request('/lab-api/editor');edState=editBase;edPreload=Promise.resolve(editBase);}catch(e){toast(e.message);return false;}
+    }
+    original=cards().map(n=>({node:n,parent:n.parentElement}));editing=true;document.body.classList.add('halodeck-editing');$('#hd-edit-bar').hidden=false;$('#hd-edit').setAttribute('aria-pressed','true');$('#lab-search').value='';$('#lab-search').oninput();cards().forEach(n=>n.draggable=true);
+    if(!instant)toast('按住卡片即可拖动排序');
+    return true;
   }
-  function endEdit(){editing=false;saving=false;document.body.classList.remove('halodeck-editing');$('#hd-edit-bar').hidden=true;$('#hd-edit').setAttribute('aria-pressed','false');cards().forEach(n=>n.draggable=false);$('#hd-save').disabled=false;$('#hd-cancel').disabled=false;}
+  function endEdit(){editing=false;saving=false;document.body.classList.remove('halodeck-editing');$('#hd-edit-bar').hidden=true;$('#hd-edit').setAttribute('aria-pressed','false');cards().forEach(n=>{n.draggable=false;n.classList.remove('hd-dragging');});$('#hd-save').disabled=false;$('#hd-cancel').disabled=false;$('#hd-save').textContent='保存';}
   function cancelEdit(){if(saving)return;original.forEach(o=>o.parent.append(o.node));endEdit();}
   async function saveEdit(){
-    if(!editing||saving)return;saving=true;$('#hd-save').disabled=true;$('#hd-cancel').disabled=true;
+    if(!editing||saving)return;saving=true;$('#hd-save').disabled=true;$('#hd-cancel').disabled=true;$('#hd-save').textContent='保存中…';
     try{
       const latest=await request('/lab-api/editor');
       if(latest.revision!==editBase.revision){const e=Error('首页已在别处修改，已同步最新排序，请重新调整。');e.status=409;throw e;}
-      const order=cards().map(n=>n.id),model=latest.model;
+      const order=cards().map(n=>n.id),model=structuredClone(latest.model);
       model.groups.forEach(g=>g.items.sort((a,b)=>order.indexOf(a.id)-order.indexOf(b.id)));
-      await request('/lab-api/editor',{method:'POST',headers:{'Content-Type':'application/json','X-Lab-Editor':'1'},body:JSON.stringify({revision:latest.revision,model})});endEdit();toast('桌面排序已保存');
-    }catch(e){if(e.status===409){try{const latest=await request('/lab-api/editor');latest.model.groups.forEach(g=>g.items.forEach(item=>{const n=document.getElementById(item.id);n?.parentElement.append(n);}));endEdit();}catch{saving=false;$('#hd-save').disabled=false;$('#hd-cancel').disabled=false;}}else{saving=false;$('#hd-save').disabled=false;$('#hd-cancel').disabled=false;}toast(e.message);}
+      const saved=await request('/lab-api/editor',{method:'POST',headers:{'Content-Type':'application/json','X-Lab-Editor':'1'},body:JSON.stringify({revision:latest.revision,model})});
+      edState={...latest,...saved};edPreload=Promise.resolve(edState);
+      endEdit();toast('桌面排序已保存');
+    }catch(e){if(e.status===409){try{const latest=await request('/lab-api/editor');edState=latest;edPreload=Promise.resolve(latest);latest.model.groups.forEach(g=>g.items.forEach(item=>{const n=document.getElementById(item.id);n?.parentElement.append(n);}));endEdit();}catch{saving=false;$('#hd-save').disabled=false;$('#hd-cancel').disabled=false;$('#hd-save').textContent='保存';}}else{saving=false;$('#hd-save').disabled=false;$('#hd-cancel').disabled=false;$('#hd-save').textContent='保存';}toast(e.message);}
   }
   function setupOrdering(){
-    let drag=null,press=null,origin=null,moved=false,lastTarget=null;
+    let drag=null,press=null,origin=null,lastTarget=null,ghost=null,scrollRaf=0,dragX=0,dragY=0,startRect=null,suppressClick=false;
+    function stopAutoScroll(){if(scrollRaf){cancelAnimationFrame(scrollRaf);scrollRaf=0;}}
+    function tickScroll(){
+      if(!drag){stopAutoScroll();return;}
+      let dy=0;
+      if(dragY<74)dy=-Math.ceil((74-dragY)/7);
+      else if(dragY>innerHeight-88)dy=Math.ceil((dragY-(innerHeight-88))/7);
+      if(dy){window.scrollBy(0,dy);hitSwap(dragX,dragY);}
+      scrollRaf=requestAnimationFrame(tickScroll);
+    }
+    function hitSwap(x,y){
+      const el=document.elementFromPoint(x,y)?.closest('[id^="app-"],[id^="custom-"]');
+      if(el&&el!==drag&&el.parentElement===drag.parentElement&&lastTarget!==el){
+        lastTarget=el;
+        (el.compareDocumentPosition(drag)&Node.DOCUMENT_POSITION_PRECEDING)?el.after(drag):el.before(drag);
+        navigator.vibrate?.(8);
+      }
+    }
+    function beginTouchDrag(n,x,y,pointerId){
+      if(drag)return;
+      drag=n;lastTarget=null;dragX=x;dragY=y;
+      startRect=n.getBoundingClientRect();
+      ghost=n.cloneNode(true);ghost.removeAttribute('id');ghost.classList.add('hd-drag-ghost');
+      ghost.style.left=startRect.left+'px';ghost.style.top=startRect.top+'px';
+      ghost.style.width=startRect.width+'px';ghost.style.height=startRect.height+'px';
+      ghost.style.transform='scale(1.05)';
+      document.body.append(ghost);
+      n.classList.add('hd-dragging');
+      try{n.setPointerCapture(pointerId);}catch{}
+      scrollRaf=requestAnimationFrame(tickScroll);
+    }
+    function endTouchDrag(){
+      stopAutoScroll();
+      if(ghost){ghost.remove();ghost=null;}
+      if(drag){drag.classList.remove('hd-dragging');drag=null;}
+      lastTarget=null;startRect=null;
+    }
     cards().forEach(n=>{
-      n.tabIndex=0;n.addEventListener('click',e=>{if(editing){e.preventDefault();e.stopImmediatePropagation();}},true);
+      n.tabIndex=0;
+      n.addEventListener('contextmenu',e=>{if(editing||origin)e.preventDefault();});
+      n.addEventListener('click',e=>{if(editing||suppressClick){e.preventDefault();e.stopImmediatePropagation();}},true);
       n.addEventListener('keydown',e=>{if(editing&&e.altKey&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();const prev=e.key==='ArrowLeft'||e.key==='ArrowUp',other=prev?n.previousElementSibling:n.nextElementSibling;if(other)prev?other.before(n):other.after(n);n.focus();}});
-      n.addEventListener('dragstart',e=>{if(!editing){e.preventDefault();return;}drag=n;lastTarget=null;n.classList.add('hd-dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',n.id);});
-      n.addEventListener('dragover',e=>{if(editing&&drag&&drag!==n&&drag.parentElement===n.parentElement){e.preventDefault();if(lastTarget===n)return;lastTarget=n;(n.compareDocumentPosition(drag)&Node.DOCUMENT_POSITION_PRECEDING)?n.after(drag):n.before(drag);}});
+      n.addEventListener('dragstart',e=>{if(!editing||e.pointerType==='touch'){e.preventDefault();return;}drag=n;lastTarget=null;n.classList.add('hd-dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',n.id);});
+      n.addEventListener('dragover',e=>{if(editing&&drag&&!ghost&&drag!==n&&drag.parentElement===n.parentElement){e.preventDefault();if(lastTarget===n)return;lastTarget=n;(n.compareDocumentPosition(drag)&Node.DOCUMENT_POSITION_PRECEDING)?n.after(drag):n.before(drag);}});
       n.addEventListener('drop',e=>{e.preventDefault();});n.addEventListener('dragend',()=>{n.classList.remove('hd-dragging');drag=null;});
-      n.addEventListener('pointerdown',e=>{if(e.button!==0||saving)return;origin={x:e.clientX,y:e.clientY,id:e.pointerId,node:n};moved=false;
-        if(!editing)press=setTimeout(()=>{startEdit();},550);else if(e.pointerType!=='mouse'){drag=n;lastTarget=null;n.setPointerCapture(e.pointerId);}
+      n.addEventListener('pointerdown',e=>{
+        if(e.button!==0||saving)return;
+        origin={x:e.clientX,y:e.clientY,id:e.pointerId,node:n,type:e.pointerType};
+        if(!editing){
+          if(e.pointerType!=='mouse'){
+            clearTimeout(press);
+            press=setTimeout(async()=>{
+              if(!origin||origin.node!==n)return;
+              suppressClick=true;setTimeout(()=>suppressClick=false,400);
+              navigator.vibrate?.(18);
+              const ok=await startEdit(true);
+              if(ok&&origin&&origin.node===n)beginTouchDrag(n,origin.x,origin.y,origin.id);
+            },420);
+          }
+        }else if(e.pointerType!=='mouse'){
+          beginTouchDrag(n,e.clientX,e.clientY,e.pointerId);
+        }
       });
-      n.addEventListener('pointermove',e=>{if(!origin)return;if(Math.hypot(e.clientX-origin.x,e.clientY-origin.y)>8){clearTimeout(press);moved=true;}if(editing&&drag&&e.pointerType!=='mouse'){
-        e.preventDefault();const other=document.elementFromPoint(e.clientX,e.clientY)?.closest('[id^="app-"],[id^="custom-"]');if(other&&other!==drag&&other.parentElement===drag.parentElement){if(lastTarget!==other){lastTarget=other;(other.compareDocumentPosition(drag)&Node.DOCUMENT_POSITION_PRECEDING)?other.after(drag):other.before(drag);}}}});
-      const clear=e=>{clearTimeout(press);origin=null;if(e.pointerType!=='mouse')drag=null;};n.addEventListener('pointerup',clear);n.addEventListener('pointercancel',clear);
+      n.addEventListener('pointermove',e=>{
+        if(!origin||e.pointerId!==origin.id)return;
+        if(!editing&&Math.hypot(e.clientX-origin.x,e.clientY-origin.y)>10){clearTimeout(press);origin=null;return;}
+        if(editing&&drag&&ghost&&e.pointerType!=='mouse'){
+          e.preventDefault();
+          dragX=e.clientX;dragY=e.clientY;
+          const dx=dragX-origin.x,dy=dragY-origin.y;
+          ghost.style.transform=`translate3d(${dx}px,${dy}px,0) scale(1.05)`;
+          hitSwap(dragX,dragY);
+        }
+      });
+      n.addEventListener('touchmove',e=>{if(editing&&drag&&ghost&&e.cancelable)e.preventDefault();},{passive:false});
+      const clear=e=>{clearTimeout(press);if(origin&&e.pointerId===origin.id)origin=null;if(e.pointerType!=='mouse')endTouchDrag();};
+      n.addEventListener('pointerup',clear);n.addEventListener('pointercancel',clear);
     });
   }
   const glassKey='halodeck.glass.v1';
@@ -249,107 +327,172 @@
   window.__hdCreateGlassControl=createGlassControl;
   window.addEventListener('storage',e=>{if(e.key===glassKey||e.key===null)applyGlass();});
   applyGlass();
-  let edState=null,edModel=null,edDirty=false,edBusy=false,edPreload=null;
-  const edIconNames={'brand-code-server.svg':'VS Code','brand-terminal.svg':'终端','brand-dagu.svg':'任务','brand-copyparty.svg':'文件','brand-files-ipados.svg':'文件','brand-backup-ipados.svg':'备份','brand-linkding.svg':'书签','brand-magpie.svg':'Magpie','brand-beszel.svg':'监控','brand-backrest.svg':'备份','brand-cloudflare.svg':'恢复','brand-github.svg':'项目','metric-network.svg':'网页','metric-cpu.svg':'设备'};
+  let edState=null,edModel=null,edDirty=false,edBusy=false,edPreload=null,edTab='appearance',edSub=null;
+  const edIconNames={'brand-code-server.svg':'VS Code','brand-terminal.svg':'终端','brand-dagu.svg':'任务','brand-copyparty.svg':'文件','brand-files-ipados.svg':'云盘','brand-backup-ipados.svg':'备份','brand-linkding.svg':'书签','brand-magpie.svg':'Magpie','brand-beszel.svg':'监控','brand-backrest.svg':'备份','brand-cloudflare.svg':'恢复','brand-github.svg':'项目','brand-mai.png':'麻衣','brand-openalice.png':'OpenAlice','metric-network.svg':'网页','metric-cpu.svg':'设备'};
   function preloadEditor(){if(!edPreload)edPreload=request('/lab-api/editor').then(s=>{edState=s;return s;}).catch(()=>{edPreload=null;});return edPreload;}
+  function ensureEditorSheet(){
+    let d=$('#hd-editor-modal');
+    if(d)return d;
+    d=document.createElement('dialog');d.id='hd-editor-modal';d.className='hd-dialog hd-editor-dialog';
+    d.innerHTML='<div class="hd-ed-nav"><button type="button" class="hd-ed-nav-btn" id="hd-ed-left">取消</button><h2 id="hd-ed-heading">编辑首页</h2><button type="button" class="hd-ed-nav-save" id="hd-ed-right">完成</button></div><div class="hd-ed-tabs" id="hd-ed-tabs" role="tablist"><button type="button" role="tab" data-tab="appearance" aria-selected="true">外观质感</button><button type="button" role="tab" data-tab="apps" aria-selected="false">应用与分组</button><button type="button" role="tab" data-tab="backup" aria-selected="false">备份还原</button></div><div class="hd-ed-scroll"><p class="hd-ed-notice" id="hd-ed-notice" role="status"></p><div id="hd-ed-body"></div></div>';
+    document.body.append(d);
+    d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeEditorSheet(d);}});
+    return d;
+  }
+  function closeEditorSheet(d){
+    if(edBusy)return;
+    if(edDirty&&!confirm('有未保存的修改，确定放弃并关闭吗？'))return;
+    edDirty=false;edSub=null;d.close();
+  }
   async function openEditor(){
-    const d=dialog('hd-editor-modal','编辑首页');d.classList.add('hd-editor-dialog');
-    const body=d.querySelector('.hd-dialog-body');
+    const d=ensureEditorSheet();
+    edDirty=false;edBusy=false;edTab='appearance';edSub=null;
     if(!d.open)d.showModal();
-    if(edState&&!edDirty){edModel=structuredClone(edState.model);edBusy=false;renderEditor(d,body);}
-    else body.innerHTML='<p class="hd-ed-notice" role="status">正在读取首页配置…</p>';
+    if(edState){edModel=structuredClone(edState.model);renderEditor(d);}
+    else{$('#hd-ed-notice').textContent='正在读取首页配置…';$('#hd-ed-notice').className='hd-ed-notice';$('#hd-ed-body').replaceChildren();}
     try{
       const freshState=await request('/lab-api/editor');
-      if(!edDirty){edState=freshState;edModel=structuredClone(edState.model);edBusy=false;renderEditor(d,body);}
-    }catch(e){if(!edState)body.innerHTML='<p class="hd-ed-notice error">'+esc(e.message)+'</p>';}
+      edState=freshState;edPreload=Promise.resolve(freshState);
+      if(!edDirty){edModel=structuredClone(edState.model);renderEditor(d);}
+    }catch(e){if(!edState){$('#hd-ed-notice').textContent=e.message;$('#hd-ed-notice').className='hd-ed-notice error';}}
   }
-  function renderEditor(d,body,openId){
+  function renderEditor(d){
     const move=(arr,from,to)=>{if(to>=0&&to<arr.length)arr.splice(to,0,arr.splice(from,1)[0]);};
-    body.innerHTML='<p class="hd-ed-notice" id="hd-ed-notice" role="status">'+(edDirty?'有未保存的修改。点击“保存到首页”后生效。':'直接在此修改，保存后自动更新首页。')+'</p><form id="hd-ed-form"><section class="hd-ed-section"><h3>外观与显示</h3><div id="hd-ed-glass-slot"></div><div class="hd-ed-row"><label class="hd-ed-field">首页名称<input id="hd-ed-title" maxlength="60" required value="'+esc(edModel.title)+'"></label><div class="hd-ed-quick"><button type="button" id="hd-ed-open-wp">壁纸与明暗</button><button type="button" id="hd-ed-sort">拖动排序</button></div></div><div class="hd-ed-toggles"><label><input type="checkbox" id="hd-ed-metrics" '+(edModel.show_metrics?'checked':'')+'> 显示实时资源监控</label></div></section><section class="hd-ed-section"><div class="hd-ed-head"><h3>入口与分组</h3><button type="button" id="hd-ed-add-group">＋ 添加分组</button></div><div id="hd-ed-groups"></div></section><section class="hd-ed-section"><h3>找回常用入口</h3><div class="hd-ed-library" id="hd-ed-library"></div></section><details class="hd-ed-section"><summary style="cursor:pointer;color:#9fb7d5;font-size:13px">导入、导出与撤销</summary><div class="hd-ed-tools"><button type="button" id="hd-ed-export">导出配置</button><button type="button" id="hd-ed-import">导入配置</button><input type="file" id="hd-ed-import-file" accept="application/json,.json" hidden><button type="button" id="hd-ed-undo">撤销上次保存</button></div></details><div class="hd-ed-footer"><span id="hd-ed-dirty">'+(edDirty?'有未保存的修改':'所有设备同步生效')+'</span><button type="submit" id="hd-ed-save" class="hd-primary" '+(edDirty&&!edBusy?'':'disabled')+'>保存到首页</button></div></form>';
-    $('#hd-ed-glass-slot').append(createGlassControl(d));
-    const notice=(msg,cls='')=>{const n=$('#hd-ed-notice');if(n){n.textContent=msg;n.className='hd-ed-notice'+(cls?' '+cls:'');}};
-    const markDirty=()=>{edDirty=true;$('#hd-ed-save').disabled=edBusy;$('#hd-ed-dirty').textContent='有未保存的修改';notice('有未保存的修改。点击“保存到首页”后生效。');};
-    const syncButtons=()=>{$('#hd-ed-save').disabled=edBusy||!edDirty;$('#hd-ed-undo').disabled=edBusy||!edState.can_undo;};
-    const renderGroups=()=>{
-      $('#hd-ed-groups').innerHTML=edModel.groups.map((g,gi)=>'<div class="hd-ed-group" data-group="'+gi+'"><div class="hd-ed-group-head"><input class="hd-ed-group-name" value="'+esc(g.name)+'" maxlength="30" required aria-label="分组名称"><div class="hd-ed-mini-btns"><button type="button" data-act="g-up" '+(gi===0?'disabled':'')+'>↑</button><button type="button" data-act="g-down" '+(gi===edModel.groups.length-1?'disabled':'')+'>↓</button><button type="button" data-act="g-del" class="hd-ed-remove">移除</button></div></div>'+g.items.map((item,ii)=>'<details class="hd-ed-item" data-item="'+ii+'" '+(item.id===openId?'open':'')+'><summary><img src="'+esc(item.icon)+'" alt=""><div class="hd-ed-item-title"><strong>'+esc(item.name)+'</strong><small>'+esc(item.href)+'</small></div><span class="hd-ed-expand">编辑</span></summary><div class="hd-ed-item-grid"><label class="hd-ed-field">名称<input data-f="name" value="'+esc(item.name)+'" maxlength="40" required></label><label class="hd-ed-field">图标<select data-f="icon">'+edState.icons.map(ic=>'<option value="'+esc(ic)+'" '+(ic===item.icon?'selected':'')+'>'+esc(edIconNames[ic.split('/').pop()]||ic.split('/').pop())+'</option>').join('')+'</select></label><label class="hd-ed-field hd-ed-wide">网址<input data-f="href" value="'+esc(item.href)+'" maxlength="2000" required></label><label class="hd-ed-field hd-ed-wide">简短说明<input data-f="description" value="'+esc(item.description)+'" maxlength="100"></label><div class="hd-ed-item-actions"><div class="hd-ed-mini-btns"><button type="button" data-act="i-up" '+(ii===0?'disabled':'')+'>↑</button><button type="button" data-act="i-down" '+(ii===g.items.length-1?'disabled':'')+'>↓</button><button type="button" data-act="i-del" class="hd-ed-remove">移除</button></div><select class="hd-ed-move-group" aria-label="移动到分组">'+edModel.groups.map((grp,idx)=>'<option value="'+idx+'" '+(idx===gi?'selected':'')+'>移至：'+esc(grp.name)+'</option>').join('')+'</select></div></div></details>').join('')+'<button type="button" class="hd-ed-add-item" data-act="i-add">＋ 添加入口</button></div>').join('');
-      const ids=new Set(edModel.groups.flatMap(g=>g.items.map(i=>i.id)));
-      $('#hd-ed-library').innerHTML=edState.catalog.filter(i=>!ids.has(i.id)).map(i=>'<button type="button" data-restore="'+esc(i.id)+'">＋ '+esc(i.name)+'</button>').join('')||'<span class="hd-note">常用入口都已放在首页。</span>';
-      syncButtons();
-    };
-    renderGroups();
-    $('#hd-ed-open-wp').onclick=()=>{d.close();$('#lab-wallpaper-open')?.click();};
-    $('#hd-ed-sort').onclick=()=>{d.close();startEdit();};
-    $('#hd-ed-form').addEventListener('input',e=>{
-      const t=e.target;
-      if(t.id==='hd-ed-title')edModel.title=t.value;
-      else if(t.id==='hd-ed-metrics')edModel.show_metrics=t.checked;
-      else if(t.matches('.hd-ed-group-name'))edModel.groups[+t.closest('[data-group]').dataset.group].name=t.value;
-      else if(t.dataset.f){
-        const row=t.closest('[data-item]'),gi=+t.closest('[data-group]').dataset.group,item=edModel.groups[gi].items[+row.dataset.item];
-        item[t.dataset.f]=t.value;
-        if(t.dataset.f==='name')row.querySelector('.hd-ed-item-title strong').textContent=t.value;
-        if(t.dataset.f==='href')row.querySelector('.hd-ed-item-title small').textContent=t.value;
-        if(t.dataset.f==='icon')row.querySelector('img').src=t.value;
-      }else return;
-      markDirty();
-    });
-    $('#hd-ed-groups').onchange=e=>{
-      if(!e.target.matches('.hd-ed-move-group'))return;
-      const gi=+e.target.closest('[data-group]').dataset.group,ii=+e.target.closest('[data-item]').dataset.item,to=+e.target.value;
-      const item=edModel.groups[gi].items.splice(ii,1)[0];edModel.groups[to].items.push(item);
-      openId=item.id;markDirty();renderGroups();
-    };
-    $('#hd-ed-groups').onclick=e=>{
-      const btn=e.target.closest('button[data-act]');if(!btn)return;
-      const gi=+btn.closest('[data-group]').dataset.group,g=edModel.groups[gi],row=btn.closest('[data-item]'),ii=row?+row.dataset.item:null;
-      openId=undefined;
-      switch(btn.dataset.act){
-        case 'g-up':move(edModel.groups,gi,gi-1);break;
-        case 'g-down':move(edModel.groups,gi,gi+1);break;
-        case 'g-del':if(!confirm('移除分组“'+g.name+'”？'))return;edModel.groups.splice(gi,1);break;
-        case 'i-up':openId=g.items[ii].id;move(g.items,ii,ii-1);break;
-        case 'i-down':openId=g.items[ii].id;move(g.items,ii,ii+1);break;
-        case 'i-del':if(!confirm('移除入口“'+g.items[ii].name+'”？'))return;g.items.splice(ii,1);break;
-        case 'i-add':openId='custom-'+crypto.randomUUID().replaceAll('-','').slice(0,16);g.items.push({id:openId,name:'新入口',href:'https://',description:'',icon:'/lab-assets/metric-network.svg'});break;
+    const left=$('#hd-ed-left'),right=$('#hd-ed-right'),head=$('#hd-ed-heading'),tabs=$('#hd-ed-tabs'),noticeEl=$('#hd-ed-notice'),body=$('#hd-ed-body');
+    const setNotice=(msg='',cls='')=>{noticeEl.textContent=msg;noticeEl.className='hd-ed-notice'+(cls?' '+cls:'');};
+    const syncNav=()=>{
+      if(edSub){
+        left.textContent='← 返回';head.textContent='编辑应用';tabs.hidden=true;
+      }else{
+        left.textContent=edDirty?'放弃':'取消';head.textContent='编辑首页';tabs.hidden=false;
+        tabs.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===edTab)));
       }
-      markDirty();renderGroups();if(openId)body.querySelector('details[open] input')?.focus();
+      right.textContent=edBusy?'保存中…':edDirty?'保存':'完成';
+      right.disabled=edBusy;
     };
-    $('#hd-ed-add-group').onclick=()=>{edModel.groups.push({name:'新分组',items:[]});markDirty();renderGroups();$('#hd-ed-groups .hd-ed-group:last-child .hd-ed-group-name')?.focus();};
-    $('#hd-ed-library').onclick=e=>{
-      const b=e.target.closest('[data-restore]');if(!b)return;
-      if(!edModel.groups.length)edModel.groups.push({name:'常用工具',items:[]});
-      const item=structuredClone(edState.catalog.find(i=>i.id===b.dataset.restore));if(!item)return;
-      edModel.groups[0].items.push(item);openId=item.id;markDirty();renderGroups();
+    const markDirty=()=>{edDirty=true;syncNav();};
+    syncNav();
+    if(!edSub)setNotice('');
+
+    left.onclick=()=>{if(edBusy)return;if(edSub){edSub=null;renderEditor(d);}else closeEditorSheet(d);};
+    tabs.onclick=e=>{const b=e.target.closest('[data-tab]');if(!b||edBusy)return;edTab=b.dataset.tab;renderEditor(d);};
+
+    const validateModel=()=>{
+      if(!edModel.title||!edModel.title.trim())return{msg:'请填写首页名称',tab:'appearance',focus:'#hd-ed-title'};
+      if(!edModel.groups.length)return{msg:'至少需要保留 1 个分组',tab:'apps'};
+      const gNames=new Set();
+      for(let gi=0;gi<edModel.groups.length;gi++){
+        const g=edModel.groups[gi],gn=(g.name||'').trim();
+        if(!gn)return{msg:'分组名称不能为空',tab:'apps'};
+        if(gNames.has(gn))return{msg:'分组名称“'+gn+'”不能重复',tab:'apps'};
+        gNames.add(gn);
+        if(!g.items.length)return{msg:'分组“'+gn+'”至少需要 1 个入口，或移除该空分组',tab:'apps'};
+        const iNames=new Set();
+        for(let ii=0;ii<g.items.length;ii++){
+          const it=g.items[ii],nm=(it.name||'').trim(),hr=(it.href||'').trim();
+          if(!nm)return{msg:'应用名称不能为空',tab:'apps',sub:{gi,ii},focus:'[data-sf="name"]'};
+          if(iNames.has(nm))return{msg:'同组中存在重复名称“'+nm+'”',tab:'apps',sub:{gi,ii},focus:'[data-sf="name"]'};
+          iNames.add(nm);
+          if(!hr||/\s/.test(hr)||!((hr.startsWith('/')&&!hr.startsWith('//'))||/^https?:\/\/\S+/i.test(hr))){
+            return{msg:'“'+nm+'”的网址需以 https://、http:// 或 / 开头且不含空格',tab:'apps',sub:{gi,ii},focus:'[data-sf="href"]'};
+          }
+        }
+      }
+      return null;
     };
-    $('#hd-ed-export').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({format:'asashiki-panel-v1',model:edModel},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='asashiki-homepage.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
-    $('#hd-ed-import').onclick=()=>$('#hd-ed-import-file').click();
-    $('#hd-ed-import-file').onchange=async e=>{
-      const file=e.target.files[0];e.target.value='';if(!file)return;
+
+    right.onclick=async()=>{
+      if(edBusy)return;
+      if(!edDirty){d.close();toast('外观与质感设置已实时生效');return;}
+      const err=validateModel();
+      if(err){
+        edTab=err.tab;edSub=err.sub||null;renderEditor(d);setNotice(err.msg,'error');
+        if(err.focus)body.querySelector(err.focus)?.focus();
+        return;
+      }
+      edBusy=true;syncNav();setNotice('正在保存到首页…');
       try{
-        if(file.size>100000)throw Error('配置文件不能超过 100KB');
-        const input=JSON.parse(await file.text());
-        if(input.format!=='asashiki-panel-v1'||!Array.isArray(input.model?.groups))throw Error('请选择有效配置');
-        const m=input.model;
-        if(typeof m.title!=='string'||!edState.backgrounds.includes(m.background)||!Number.isInteger(m.opacity)||typeof m.show_metrics!=='boolean'||typeof m.show_recent!=='boolean'||m.groups.length>12)throw Error('配置字段不完整');
-        for(const g of m.groups){if(typeof g.name!=='string'||!Array.isArray(g.items)||g.items.length>24)throw Error('分组格式不正确');for(const i of g.items){if(!['id','name','href','description','icon'].every(k=>typeof i[k]==='string')||!edState.icons.includes(i.icon))throw Error('入口格式不正确');}}
-        edModel=m;markDirty();renderEditor(d,body);notice('配置已导入草稿，点击“保存到首页”生效。');
-      }catch(err){notice('未导入：'+err.message,'error');}
+        const latest=await request('/lab-api/editor');
+        if(latest.revision!==edState.revision){
+          throw Error('首页在别处刚被修改过，请点“备份还原 → 重新载入”后再保存。');
+        }
+        const saved=await request('/lab-api/editor',{method:'POST',headers:{'Content-Type':'application/json','X-Lab-Editor':'1'},body:JSON.stringify({revision:edState.revision,model:edModel})});
+        edState={...edState,...saved};edPreload=Promise.resolve(edState);
+        edDirty=false;edBusy=false;d.close();toast('首页已保存，正在刷新…');setTimeout(()=>location.reload(),300);
+      }catch(e){edBusy=false;syncNav();setNotice(e.message,'error');}
     };
-    $('#hd-ed-undo').onclick=async()=>{
-      if(!confirm('撤销上次保存？当前未保存的修改将舍弃。'))return;
-      edBusy=true;syncButtons();notice('正在撤销…');
-      try{await request('/lab-api/editor/undo',{method:'POST',headers:{'Content-Type':'application/json','X-Lab-Editor':'1'},body:JSON.stringify({revision:edState.revision})});toast('已恢复上次保存，正在刷新首页…');d.close();location.reload();}
-      catch(err){notice(err.message,'error');edBusy=false;syncButtons();}
-    };
-    $('#hd-ed-form').onsubmit=async e=>{
-      e.preventDefault();if(!$('#hd-ed-form').reportValidity())return;
-      edBusy=true;syncButtons();notice('正在保存…');
-      try{
-        const res=await fetch('/lab-api/editor',{method:'POST',headers:{'Content-Type':'application/json','X-Lab-Editor':'1'},body:JSON.stringify({revision:edState.revision,model:edModel})});
-        if(!res.ok)throw Error(await res.text());
-        edDirty=false;d.close();toast('首页已更新，正在刷新…');setTimeout(()=>location.reload(),350);
-      }catch(err){notice(err.message,'error');edBusy=false;syncButtons();}
-    };
+
+    if(edSub){
+      const {gi,ii}=edSub,g=edModel.groups[gi],item=g?.items[ii];
+      if(!item){edSub=null;renderEditor(d);return;}
+      body.innerHTML='<div class="hd-ed-card"><label class="hd-ed-field">应用名称<input data-sf="name" maxlength="40" value="'+esc(item.name)+'"></label><label class="hd-ed-field">打开网址<input data-sf="href" maxlength="2000" placeholder="https:// 或 /path/" value="'+esc(item.href)+'"></label><label class="hd-ed-field">简短说明<input data-sf="description" maxlength="100" placeholder="可选" value="'+esc(item.description)+'"></label><div class="hd-ed-field">选择图标<div class="hd-ed-icon-grid" id="hd-ed-icon-grid">'+edState.icons.map(ic=>'<button type="button" class="hd-ed-icon-btn" data-icon="'+esc(ic)+'" aria-pressed="'+String(ic===item.icon)+'" title="'+esc(edIconNames[ic.split('/').pop()]||ic.split('/').pop())+'"><img src="'+esc(ic)+'" alt=""></button>').join('')+'</div></div><label class="hd-ed-field">所在分组<select id="hd-ed-sub-group">'+edModel.groups.map((grp,idx)=>'<option value="'+idx+'" '+(idx===gi?'selected':'')+'>'+esc(grp.name)+'</option>').join('')+'</select></label></div><div class="hd-ed-sub-actions"><button type="button" id="hd-ed-sub-del" class="hd-ed-remove">从首页移除此应用</button></div>';
+      body.querySelectorAll('[data-sf]').forEach(inp=>inp.oninput=()=>{item[inp.dataset.sf]=inp.value;markDirty();});
+      $('#hd-ed-icon-grid').onclick=e=>{const b=e.target.closest('[data-icon]');if(!b)return;item.icon=b.dataset.icon;$('#hd-ed-icon-grid').querySelectorAll('[data-icon]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));markDirty();};
+      $('#hd-ed-sub-group').onchange=e=>{const to=+e.target.value;if(to===gi)return;edModel.groups[gi].items.splice(ii,1);edModel.groups[to].items.push(item);edSub={gi:to,ii:edModel.groups[to].items.length-1};markDirty();renderEditor(d);};
+      $('#hd-ed-sub-del').onclick=()=>{if(!confirm('从首页移除“'+item.name+'”？数据不会丢失，可随时加回。'))return;g.items.splice(ii,1);edSub=null;markDirty();renderEditor(d);};
+      return;
+    }
+
+    if(edTab==='appearance'){
+      body.innerHTML='<div id="hd-ed-glass-slot"></div><div class="hd-ed-quick-grid"><button type="button" class="hd-ed-quick-btn" id="hd-ed-open-wp"><strong>壁纸与明暗</strong><span>更换背景或浅深主题</span></button><button type="button" class="hd-ed-quick-btn" id="hd-ed-sort"><strong>拖动排位置</strong><span>长按卡片也能直接拖</span></button></div><div class="hd-ed-card"><label class="hd-ed-field">首页名称<input id="hd-ed-title" maxlength="60" value="'+esc(edModel.title)+'"></label><label class="hd-ed-switch-row"><span>显示顶部实时资源监控</span><input type="checkbox" class="hd-ed-switch" id="hd-ed-metrics" '+(edModel.show_metrics?'checked':'')+'></label></div>';
+      $('#hd-ed-glass-slot').append(createGlassControl(d));
+      $('#hd-ed-open-wp').onclick=()=>{if(edDirty&&!confirm('切换到壁纸弹窗会保留当前未保存的草稿，继续吗？'))return;d.close();$('#lab-wallpaper-open')?.click();};
+      $('#hd-ed-sort').onclick=()=>{d.close();startEdit(true);};
+      $('#hd-ed-title').oninput=e=>{edModel.title=e.target.value;markDirty();};
+      $('#hd-ed-metrics').onchange=e=>{edModel.show_metrics=e.target.checked;markDirty();};
+    }else if(edTab==='apps'){
+      const ids=new Set(edModel.groups.flatMap(g=>g.items.map(i=>i.id)));
+      const libHtml=edState.catalog.filter(i=>!ids.has(i.id)).map(i=>'<button type="button" data-restore="'+esc(i.id)+'">＋ '+esc(i.name)+'</button>').join('');
+      body.innerHTML='<div class="hd-ed-head"><h3>首页分组 ('+edModel.groups.length+')</h3><button type="button" id="hd-ed-add-group">＋ 添加分组</button></div><div id="hd-ed-groups">'+edModel.groups.map((g,gi)=>'<div class="hd-ed-group" data-group="'+gi+'"><div class="hd-ed-group-head"><input class="hd-ed-group-name" value="'+esc(g.name)+'" maxlength="30" aria-label="分组名称"><div class="hd-ed-mini-btns"><button type="button" data-act="g-up" '+(gi===0?'disabled':'')+'>↑</button><button type="button" data-act="g-down" '+(gi===edModel.groups.length-1?'disabled':'')+'>↓</button><button type="button" data-act="g-del" class="hd-ed-remove">删除</button></div></div>'+g.items.map((item,ii)=>'<div class="hd-ed-row-item" data-item="'+ii+'"><button type="button" class="hd-ed-row-main" data-act="i-edit"><img src="'+esc(item.icon)+'" alt=""><div class="hd-ed-row-text"><strong>'+esc(item.name)+'</strong><small>'+esc(item.href)+'</small></div><span class="hd-ed-chevron">›</span></button><div class="hd-ed-mini-btns"><button type="button" data-act="i-up" '+(ii===0?'disabled':'')+'>↑</button><button type="button" data-act="i-down" '+(ii===g.items.length-1?'disabled':'')+'>↓</button></div></div>').join('')+'<button type="button" class="hd-ed-add-item" data-act="i-add">＋ 在“'+esc(g.name)+'”添加应用</button></div>').join('')+'</div><div class="hd-ed-card"><h3>找回常用内置应用</h3><div class="hd-ed-library" id="hd-ed-library">'+(libHtml||'<span class="hd-note">所有内置应用都已经放在首页啦。</span>')+'</div></div>';
+      $('#hd-ed-groups').oninput=e=>{if(e.target.matches('.hd-ed-group-name')){edModel.groups[+e.target.closest('[data-group]').dataset.group].name=e.target.value;markDirty();}};
+      $('#hd-ed-groups').onclick=e=>{
+        const btn=e.target.closest('[data-act]');if(!btn)return;
+        const gi=+btn.closest('[data-group]').dataset.group,g=edModel.groups[gi],row=btn.closest('[data-item]'),ii=row?+row.dataset.item:null;
+        switch(btn.dataset.act){
+          case 'g-up':move(edModel.groups,gi,gi-1);break;
+          case 'g-down':move(edModel.groups,gi,gi+1);break;
+          case 'g-del':if(!confirm('移除分组“'+g.name+'”及其所有入口？'))return;edModel.groups.splice(gi,1);break;
+          case 'i-up':move(g.items,ii,ii-1);break;
+          case 'i-down':move(g.items,ii,ii+1);break;
+          case 'i-edit':edSub={gi,ii};renderEditor(d);return;
+          case 'i-add':const nid='custom-'+crypto.randomUUID().replaceAll('-','').slice(0,16);g.items.push({id:nid,name:'新应用',href:'https://',description:'',icon:edState.icons[0]||'/lab-assets/metric-network.svg'});edSub={gi,ii:g.items.length-1};markDirty();renderEditor(d);body.querySelector('[data-sf="name"]')?.focus();return;
+        }
+        markDirty();renderEditor(d);
+      };
+      $('#hd-ed-add-group').onclick=()=>{edModel.groups.push({name:'新分组',items:[]});markDirty();renderEditor(d);$('#hd-ed-groups .hd-ed-group:last-child .hd-ed-group-name')?.focus();};
+      $('#hd-ed-library').onclick=e=>{
+        const b=e.target.closest('[data-restore]');if(!b)return;
+        if(!edModel.groups.length)edModel.groups.push({name:'常用工具',items:[]});
+        const item=structuredClone(edState.catalog.find(i=>i.id===b.dataset.restore));if(!item)return;
+        edModel.groups[0].items.push(item);markDirty();renderEditor(d);setNotice('已加回“'+item.name+'”，点击右上角保存生效。','success');
+      };
+    }else{
+      body.innerHTML='<div class="hd-ed-card"><h3>配置导入与还原</h3><p class="hd-note">每次保存都会留一份副本，可随时撤销回上次保存状态。</p><div class="hd-ed-tools"><button type="button" id="hd-ed-export">导出当前配置</button><button type="button" id="hd-ed-import">导入配置 JSON</button><input type="file" id="hd-ed-import-file" accept="application/json,.json" hidden><button type="button" id="hd-ed-undo" '+(!edState.can_undo?'disabled':'')+'>撤销上次保存</button><button type="button" id="hd-ed-reload">重新读取服务器</button></div></div>';
+      $('#hd-ed-export').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({format:'asashiki-panel-v1',model:edModel},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='asashiki-homepage.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+      $('#hd-ed-import').onclick=()=>$('#hd-ed-import-file').click();
+      $('#hd-ed-import-file').onchange=async e=>{
+        const file=e.target.files[0];e.target.value='';if(!file)return;
+        try{
+          if(file.size>100000)throw Error('配置文件不能超过 100KB');
+          const input=JSON.parse(await file.text());
+          if(input.format!=='asashiki-panel-v1'||!Array.isArray(input.model?.groups))throw Error('请选择有效配置');
+          const m=input.model;
+          if(typeof m.title!=='string'||!edState.backgrounds.includes(m.background)||!Number.isInteger(m.opacity)||typeof m.show_metrics!=='boolean'||typeof m.show_recent!=='boolean'||m.groups.length>12)throw Error('配置字段不完整');
+          for(const g of m.groups){if(typeof g.name!=='string'||!Array.isArray(g.items)||g.items.length>24)throw Error('分组格式不正确');for(const i of g.items){if(!['id','name','href','description','icon'].every(k=>typeof i[k]==='string')||!edState.icons.includes(i.icon))throw Error('入口格式不正确');}}
+          edModel=m;markDirty();edTab='apps';renderEditor(d);setNotice('配置已导入草稿，点击右上角保存生效。','success');
+        }catch(err){setNotice('未导入：'+err.message,'error');}
+      };
+      $('#hd-ed-undo').onclick=async()=>{
+        if(!confirm('撤销上次保存？当前未保存的修改将舍弃。'))return;
+        edBusy=true;syncNav();setNotice('正在撤销…');
+        try{await request('/lab-api/editor/undo',{method:'POST',headers:{'Content-Type':'application/json','X-Lab-Editor':'1'},body:JSON.stringify({revision:edState.revision})});toast('已恢复上次保存，正在刷新首页…');d.close();location.reload();}
+        catch(err){setNotice(err.message,'error');edBusy=false;syncNav();}
+      };
+      $('#hd-ed-reload').onclick=async()=>{
+        if(edDirty&&!confirm('放弃当前未保存修改，重新从服务器读取最新配置？'))return;
+        edDirty=false;await openEditor();setNotice('已读取服务器最新配置','success');
+      };
+    }
   }
   setup();
 })();

@@ -225,6 +225,15 @@ class ConfigurationBoundaryTests(EditorFixture, unittest.TestCase):
         with self.assertRaises(ValueError):
             editor.compile_config(model, self.original)
 
+    def test_existing_local_asset_icon_remains_saveable(self):
+        data = self.disk()
+        data['services.yaml'][0]['工作'][0]['终端']['icon'] = '/lab-assets/brand-openalice.png'
+        (self.config / 'services.yaml').write_text(json.dumps(data['services.yaml']))
+        current = editor.state()
+        self.assertIn('/lab-assets/brand-openalice.png', current['icons'])
+        saved = editor.save({'revision': current['revision'], 'model': current['model']})
+        self.assertEqual(saved['model']['groups'][0]['items'][0]['icon'], '/lab-assets/brand-openalice.png')
+
 
 class HTTPBoundaryTests(EditorFixture, unittest.IsolatedAsyncioTestCase):
     headers = {'Host': 'localhost', 'Origin': 'http://localhost', 'X-Lab-Editor': '1',

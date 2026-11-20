@@ -79,6 +79,18 @@ def safe_url(value):
     return value
 
 
+def allowed_icons(cat, data):
+    icons = list(cat.get('icons', []))
+    seen = set(icons)
+    candidates = [v.get('icon', '') for item in cat.get('services', []) for v in item.values()]
+    candidates += [v.get('icon', '') for grp in data.get('services.yaml', []) for cards in grp.values() for card in cards for v in card.values()]
+    for icon in candidates:
+        if isinstance(icon, str) and icon not in seen and re.fullmatch(r'/lab-assets/[A-Za-z0-9._-]+', icon):
+            seen.add(icon)
+            icons.append(icon)
+    return icons
+
+
 def compile_config(model, old):
     if not isinstance(model, dict): raise ValueError('首页格式不正确')
     cat = catalogue()
@@ -92,6 +104,7 @@ def compile_config(model, old):
     groups = model.get('groups')
     if not isinstance(groups, list) or not 1 <= len(groups) <= 12: raise ValueError('请保留 1–12 个分组')
     templates = {v['id']: v for item in cat['services'] for v in item.values()}
+    icons = set(allowed_icons(cat, old))
     result = []; layout = {}; seen = set(); group_names = set(); total = 0
     if model['show_metrics']:
         result.append(copy.deepcopy(cat['metrics']))
@@ -116,7 +129,7 @@ def compile_config(model, old):
             names.add(label)
             href = safe_url(item.get('href'))
             icon = item.get('icon')
-            if icon not in cat['icons']: raise ValueError('请选择内置图标')
+            if icon not in icons: raise ValueError('请选择内置图标')
             base = copy.deepcopy(templates.get(cid, {}))
             # A user-changed URL no longer represents the registered application.
             if base.get('href') != href:
@@ -143,7 +156,7 @@ def state():
     with locked():
         data = bundle(); cat = catalogue()
         return {'revision': revision(data), 'model': display(data), 'catalog': cat['choices'],
-                'icons': cat['icons'], 'backgrounds': cat['backgrounds'],
+                'icons': allowed_icons(cat, data), 'backgrounds': cat['backgrounds'],
                 'can_undo': (HISTORY / 'last.json').is_file()}
 
 
